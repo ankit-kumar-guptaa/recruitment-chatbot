@@ -1,0 +1,49 @@
+body.light-mode {
+    background: #f8f9fa;
+    color: #333;
+}
+body.dark-mode {
+    background: #1a1a1a;
+    color: #e0e0e0;
+}
+#chatbox {
+    background: #fff;
+    padding: 15px;
+    border-radius: 5px;
+    transition: background 0.3s;
+}
+body.dark-mode #chatbox {
+    background: #2c2c2c;
+}
+.message {
+    margin: 10px 0;
+    padding: 10px;
+    border-radius: 5px;
+}
+.user-message {
+    background: #007bff;
+    color: white;
+    text-align: right;
+}
+.bot-message {
+    background: #e9ecef;
+    color: #333;
+    text-align: left;
+}
+body.dark-mode .bot-message {
+    background: #444;
+    color: #e0e0e0;
+}
+body.dark-mode .card-header {
+    background: #007bff !important;
+}
+@keyframes typing {
+    from { width: 0; }
+    to { width: 100%; }
+}
+.toggle-btn {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+}
