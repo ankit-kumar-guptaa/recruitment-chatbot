@@ -1,17 +1,17 @@
 .message {
-    margin: 15px 0;
-    padding: 18px 24px;
-    border-radius: 30px;
-    max-width: 90%;
+    margin: 12px 0;
+    padding: 12px 18px;
+    border-radius: 15px;
+    max-width: 90%; /* Increased max-width for better visibility */
     word-wrap: break-word;
     word-break: break-word;
     overflow-wrap: break-word;
-    transition: all 0.5s ease;
+    white-space: pre-wrap; /* Preserve line breaks and wrap text */
+    transition: all 0.4s ease;
     position: relative;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
-    -webkit-backdrop-filter: blur(5px);
-    backdrop-filter: blur(5px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
+    backdrop-filter: blur(3px);
 }
 .user-message {
     background: linear-gradient(to bottom, #007bff, #0056b3);
@@ -20,25 +20,25 @@
     border-top-left-radius: 0;
 }
 .bot-message {
-    background: linear-gradient(to bottom, #2d3748, #1a202c);
+    background: linear-gradient(to bottom, #374151, #1f2937);
     color: #e0e0e0;
     margin-right: auto;
     border-top-right-radius: 0;
 }
 .option-btn {
     display: inline-block;
-    padding: 14px 28px;
+    padding: 10px 20px;
     background: linear-gradient(to right, #007bff, #0056b3);
     color: white;
-    border-radius: 25px;
-    margin: 8px;
+    border-radius: 15px;
+    margin: 5px;
     cursor: pointer;
-    transition: background 0.5s ease, transform 0.3s ease, box-shadow 0.5s ease;
+    transition: background 0.4s ease, transform 0.3s ease, box-shadow 0.4s ease;
 }
 .option-btn:hover {
     background: linear-gradient(to right, #0056b3, #003d7a);
-    transform: scale(1.1);
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+    transform: scale(1.05);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
 }
 @keyframes typing {
     from { width: 0; }
@@ -48,19 +48,19 @@
     scrollbar-width: thin;
 }
 .scrollbar-thumb-blue-700 {
-    scrollbar-color: #3b82f6 #2d3748;
+    scrollbar-color: #3b82f6 #1f2937;
 }
-.scrollbar-track-gray-900 {
-    scrollbar-color: #2d3748 #3b82f6;
+.scrollbar-track-gray-800 {
+    scrollbar-color: #1f2937 #3b82f6;
 }
 body.light-mode {
-    background: linear-gradient(to bottom, #f0f4f8, #ffffff);
+    background: linear-gradient(to bottom, #f3f4f6, #ffffff);
     color: #333;
 }
 .light-mode .message {
     background: linear-gradient(to bottom, #e5e7eb, #d1d5db);
     color: #333;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 .light-mode .bot-message {
     background: linear-gradient(to bottom, #e5e7eb, #d1d5db);
@@ -69,13 +69,13 @@ body.light-mode {
 .light-mode .option-btn {
     background: linear-gradient(to right, #007bff, #0056b3);
     color: white;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 .light-mode .scrollbar-thumb-blue-700 {
-    scrollbar-color: #3b82f6 #edf2f7;
+    scrollbar-color: #3b82f6 #e5e7eb;
 }
-.light-mode .scrollbar-track-gray-900 {
-    scrollbar-color: #edf2f7 #3b82f6;
+.light-mode .scrollbar-track-gray-800 {
+    scrollbar-color: #e5e7eb #3b82f6;
 }
 .animate-pulse {
     animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
@@ -90,4 +90,33 @@ body.light-mode {
 #validationError.show {
     opacity: 1;
     display: block;
+}
+footer {
+    z-index: 1000; /* Ensure footer stays above chatbox */
+}
+footer button {
+    transition: all 0.3s ease;
+}
+footer button:hover {
+    transform: scale(1.05);
+}
+#loading {
+    transition: opacity 0.3s ease;
+}
+#loading.show {
+    opacity: 1;
+    display: flex;
+}
+#chatbox {
+    max-height: calc(100vh - 180px); /* Ensure chatbox height is correct */
+    overflow-y: auto; /* Ensure scrolling works */
+}
+.bot-message.typing {
+    overflow: hidden;
+    white-space: nowrap;
+    border-right: 2px solid #e0e0e0; /* Typing cursor */
+    animation: typing 1.5s steps(40, end) forwards, blink 0.5s step-end infinite;
+}
+@keyframes blink {
+    50% { border-color: transparent; }
 }
