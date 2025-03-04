@@ -2,15 +2,15 @@ let userType = '';
 let userData = { 
     user_type: '', 
     name: '', 
+    fresher_experienced: '', // New field for Fresher/Experienced
+    applying_for_job: '', // New field for Yes/No on job application
+    position: '', 
+    experience_years: '', // Only for Experienced (not shown for Fresher)
+    skills_degree: '', // Updated from skills_certifications to skills_degree
+    location_preference: '', 
     email: '', 
     phone: '', 
-    position: '', 
-    hiring_count: '', 
-    requirements: '', 
-    location: '', 
-    experience: '', 
-    skills_certifications: '', 
-    location_preference: '' 
+    comments: '' // New field for additional comments
 };
 let userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9); // Unique identifier for each user
 let currentStep = 0; // Track the current step to ensure one question at a time
@@ -111,21 +111,43 @@ function showNextQuestion() {
         if (filledFields === 1) { // After user_type is saved
             typeMessage("What’s your name?");
         } else if (filledFields === 2) { // After name is saved
-            typeMessage("Please provide your email address (e.g., ankit2@email.com).");
-        } else if (filledFields === 3) { // After email is saved
-            typeMessage("Please provide your phone number.");
-        } else if (filledFields === 4) { // After phone is saved
+            showOptionsForFresherExperienced();
+        } else if (filledFields === 3) { // After fresher_experienced is saved
+            showOptionsForJobApplication();
+        } else if (filledFields === 4) { // After applying_for_job is saved
             typeMessage("Awesome! What type of job are you looking for? E.g., Software Developer, Marketing Specialist, etc.");
         } else if (filledFields === 5) { // After position is saved
-            typeMessage("Great! How many years of experience do you have in this field?");
-        } else if (filledFields === 6) { // After experience is saved
-            typeMessage("Thanks! What specific skills or certifications do you have that make you stand out for this role?");
-        } else if (filledFields === 7) { // After skills_certifications is saved
+            if (userData.fresher_experienced.toLowerCase() === 'experienced') {
+                typeMessage("Great! How many years of experience do you have in this field?");
+            } else {
+                // Skip experience_years for Fresher and move to next question
+                userData.experience_years = '0'; // Default for Fresher
+                saveUserInput('experience_years', '0', userId);
+            }
+        } else if (filledFields === 6 || (filledFields === 5 && userData.fresher_experienced.toLowerCase() === 'fresher')) { // After experience_years (or skipped for Fresher)
+            typeMessage("Thanks! What specific skills or Degree do you have that make you stand out for this role?");
+        } else if (filledFields === 7) { // After skills_degree is saved
             typeMessage("Perfect! Are you open to relocating, or do you prefer a specific location like a city or region?");
         } else if (filledFields === 8) { // After location_preference is saved
-            typeMessage("Thanks for sharing! We’ve saved your enquiry. We’ll connect with you soon. Please don’t call us—we’ll reach out to you at: +91 98703 64340");
+            typeMessage("Please provide your email address (e.g., ankit2@email.com).");
+        } else if (filledFields === 9) { // After email is saved
+            typeMessage("Please provide your phone number.");
+        } else if (filledFields === 10) { // After phone is saved
+            typeMessage("Any other comments?");
+        } else if (filledFields === 11) { // After comments is saved
+            typeMessage("Thank you for sharing your details! We have saved your information and will connect with you soon. Please note that we place candidates based on company requirements—we do not create job openings.");
         }
     }
+}
+
+function showOptionsForFresherExperienced() {
+    typeMessage("Are you a Fresher or Experienced?");
+    showOptions(['Fresher', 'Experienced']);
+}
+
+function showOptionsForJobApplication() {
+    typeMessage("Are you applying for any job posted by us on our job portal or LinkedIn?");
+    showOptions(['Yes', 'No']);
 }
 
 function showOptions(options) {
@@ -144,10 +166,10 @@ function selectOption(option) {
 function typeMessage(text) {
     let $message = $(`<div class="message bot-message typing" style="display: block; overflow: hidden; white-space: pre-wrap;">${text}</div>`);
     $('#messages').append($message);
-    $message.css('animation', 'typing 2s steps(40, end) forwards, blink 0.75s step-end infinite'); // Adjusted for smoother timing
+    $message.css('animation', 'typewriter 2.5s steps(40, end) 0.5s 1 normal both, blink-cursor 0.8s step-end infinite'); // Updated for professional look
     setTimeout(() => {
         $message.removeClass('typing').css('animation', 'none').css('border-right', 'none');
-    }, 2000); // Match the updated typing animation duration
+    }, 2500); // Match the typewriter animation duration
     $('#chatbox').scrollTop($('#chatbox')[0].scrollHeight);
 }
 
@@ -168,12 +190,15 @@ function getColumnForStep() {
         switch (filledFields) {
             case 0: return 'user_type'; // Already handled
             case 1: return 'name';
-            case 2: return 'email';
-            case 3: return 'phone';
+            case 2: return 'fresher_experienced';
+            case 3: return 'applying_for_job';
             case 4: return 'position';
-            case 5: return 'experience';
-            case 6: return 'skills_certifications';
+            case 5: return userData.fresher_experienced.toLowerCase() === 'experienced' ? 'experience_years' : 'skills_degree';
+            case 6: return 'skills_degree';
             case 7: return 'location_preference';
+            case 8: return 'email';
+            case 9: return 'phone';
+            case 10: return 'comments';
         }
     }
     return '';
@@ -209,15 +234,15 @@ function clearChat() {
     userData = { 
         user_type: '', 
         name: '', 
+        fresher_experienced: '', 
+        applying_for_job: '', 
+        position: '', 
+        experience_years: '', 
+        skills_degree: '', 
+        location_preference: '', 
         email: '', 
         phone: '', 
-        position: '', 
-        hiring_count: '', 
-        requirements: '', 
-        location: '', 
-        experience: '', 
-        skills_certifications: '', 
-        location_preference: '' 
+        comments: '' 
     };
     userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9); // Reset user ID
     currentStep = 0; // Reset step
