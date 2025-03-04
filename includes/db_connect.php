@@ -1,8 +1,13 @@
 <?php
+// $servername = "localhost";
+// $username = "root"; // Apna DB username (e.g., "root")
+// $password = ""; // Apna DB password (e.g., "" for XAMPP)
+// $dbname = "recruitment_chatbot";
+
 $servername = "localhost";
-$username = "root"; // Apna DB username (e.g., "root")
-$password = ""; // Apna DB password (e.g., "" for XAMPP)
-$dbname = "recruitment_chatbot";
+$username = "u141142577_chatbot"; // Apna DB username (e.g., "root")
+$password = "Chatbot@1925@"; // Apna DB password (e.g., "" for XAMPP)
+$dbname = "u141142577_chatbot";
 
 try {
     $conn = new PDO("mysql:host=$servername;dbname=$dbname;charset=utf8mb4", $username, $password, [
