@@ -115,7 +115,7 @@ footer button:hover {
     overflow: hidden;
     white-space: nowrap;
     border-right: 2px solid #e0e0e0; /* Typing cursor */
-    animation: typing 1.5s steps(40, end) forwards, blink 0.5s step-end infinite;
+    animation: typing 2s steps(40, end) forwards, blink 0.75s step-end infinite; /* Adjusted timing for smoother effect */
 }
 @keyframes blink {
     50% { border-color: transparent; }

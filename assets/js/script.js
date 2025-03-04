@@ -1,6 +1,19 @@
 let userType = '';
-let userData = { user_type: '', name: '', email: '', phone: '', position: '', hiring_count: '', requirements: '', location: '', experience: '', skills_certifications: '', location_preference: '' };
+let userData = { 
+    user_type: '', 
+    name: '', 
+    email: '', 
+    phone: '', 
+    position: '', 
+    hiring_count: '', 
+    requirements: '', 
+    location: '', 
+    experience: '', 
+    skills_certifications: '', 
+    location_preference: '' 
+};
 let userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9); // Unique identifier for each user
+let currentStep = 0; // Track the current step to ensure one question at a time
 
 function sendMessage() {
     let input = $('#userInput').val().trim();
@@ -13,120 +26,61 @@ function sendMessage() {
         if (input.toLowerCase() === 'employer' || input.toLowerCase() === 'job seeker' || input === 'Employer' || input === 'Job Seeker') {
             userType = input.toLowerCase();
             $('#messages').append(`<div class="message user-message">${input}</div>`);
-            typeMessage("What’s your name?");
-            saveUserInput('user_type', userType, userId); // Save user_type only
+            saveUserInput('user_type', userType, userId); // Save user_type and wait for server response
+            currentStep = 1; // Set initial step after user type selection
         } else {
             showValidationError('Please select "Employer" or "Job Seeker".');
             return;
         }
     } else {
         $('#messages').append(`<div class="message user-message">${input}</div>`);
-        if (!input) {
-            showValidationError('Please enter a valid response.');
-            return;
-        }
         saveUserInput(getColumnForStep(), input, userId);
-        showNextQuestion();
     }
 
     $('#userInput').val('');
     $('#chatbox').scrollTop($('#chatbox')[0].scrollHeight);
     hideValidationError();
     $('#loading').addClass('show');
-
-    $.ajax({
-        url: 'process_chat.php',
-        type: 'POST',
-        data: { message: input, userType: userType, userData: JSON.stringify(userData), userId: userId },
-        dataType: 'json',
-        success: function(data) {
-            $('#loading').removeClass('show');
-            if (data.error) {
-                console.error('Server Error:', data.error);
-                typeMessage('Error: ' + data.error + ' Please try again or contact support at support@example.com.');
-            } else {
-                typeMessage(data.response);
-            }
-        },
-        error: function(xhr, status, error) {
-            $('#loading').removeClass('show');
-            console.error('AJAX Error:', error, 'Status:', status, 'Response:', xhr.responseText);
-            let responseText = xhr.responseText;
-            if (status === 404) {
-                typeMessage('Error: Server file not found. Please check the setup or contact support at support@example.com.');
-            } else {
-                try {
-                    let parsedError = JSON.parse(responseText);
-                    typeMessage('Error: ' + (parsedError.error || 'Unexpected server response. Please try again or contact support at support@example.com.'));
-                } catch (e) {
-                    typeMessage('Error: Unexpected server response. Please try again or contact support at support@example.com. Error details: ' + error + '. Status: ' + status);
-                }
-            }
-        }
-    });
-}
-
-// Enter key support
-$('#userInput').on('keypress', function(e) {
-    if (e.which === 13) { // Enter key
-        sendMessage();
-    }
-});
-
-function showOptions(options) {
-    let $options = $('#messages').append('<div class="flex flex-wrap mt-4"></div>');
-    options.forEach(option => {
-        $options.append(`<button class="option-btn mr-2 mb-2" onclick="selectOption('${option}')">${option}</button>`);
-    });
-    $('#chatbox').scrollTop($('#chatbox')[0].scrollHeight);
-}
-
-function selectOption(option) {
-    $('#userInput').val(option);
-    sendMessage();
-}
-
-function typeMessage(text) {
-    let $message = $(`<div class="message bot-message typing" style="display: block; overflow: hidden; white-space: pre-wrap;">${text}</div>`);
-    $('#messages').append($message);
-    $message.css('animation', 'typing 1.5s steps(40, end) forwards, blink 0.5s step-end infinite');
-    setTimeout(() => {
-        $message.removeClass('typing').css('animation', 'none').css('border-right', 'none');
-    }, 1500); // Match the typing animation duration
-    $('#chatbox').scrollTop($('#chatbox')[0].scrollHeight);
 }
 
 function saveUserInput(column, value, userId) {
-    userData[column] = value;
+    // Ensure no duplicate or incorrect data is saved
+    if (!userData[column] || userData[column] === '') {
+        userData[column] = value;
+    }
     $('#loading').addClass('show');
     $.ajax({
         url: 'process_chat.php',
         type: 'POST',
-        data: { saveUserInput: true, userType: userType, column: column, value: value, userId: userId },
+        data: { saveUserInput: true, userType: userType, column: column, value: value, userId: userId, currentStep: currentStep },
         dataType: 'json',
         async: true,
         success: function(data) {
             $('#loading').removeClass('show');
             if (data.error) {
                 console.error('Save User Input Error:', data.error);
-                typeMessage('Error saving your input: ' + data.error + ' Please try again or contact support at support@example.com.');
-            } else {
+                typeMessage('Error saving your input: ' + (data.error.message || data.error) + ' Please try again or contact support at support@example.com.');
+            } else if (data.success) {
                 console.log('User input saved successfully:', data.success);
+                currentStep = data.nextStep; // Update currentStep based on server response
+                if (column === 'user_type') {
+                    // Only show the next question after saving user_type
+                    showNextQuestion();
+                } else {
+                    // For other inputs, show the next question immediately
+                    showNextQuestion();
+                }
             }
         },
         error: function(xhr, status, error) {
             $('#loading').removeClass('show');
             console.error('Save User Input AJAX Error:', error, 'Status:', status, 'Response:', xhr.responseText);
             let responseText = xhr.responseText;
-            if (status === 404) {
-                typeMessage('Error: Server file not found. Please check the setup or contact support at support@example.com.');
-            } else {
-                try {
-                    let parsedError = JSON.parse(responseText);
-                    typeMessage('Error saving your input: ' + (parsedError.error || 'Unexpected server response. Please try again or contact support at support@example.com.'));
-                } catch (e) {
-                    typeMessage('Error saving your input. Unexpected server response. Please try again or contact support at support@example.com. Error details: ' + error + '. Status: ' + status);
-                }
+            try {
+                let parsedError = JSON.parse(responseText);
+                typeMessage('Error saving your input: ' + (parsedError.error || 'Unexpected server response') + ' Please try again or contact support at support@example.com.');
+            } catch (e) {
+                typeMessage('Error saving your input. Unexpected server response. Please try again or contact support at support@example.com. Error details: ' + error + '. Status: ' + status);
             }
         }
     });
@@ -134,7 +88,7 @@ function saveUserInput(column, value, userId) {
 
 function showNextQuestion() {
     if (userType === 'employer') {
-        const filledFields = Object.keys(userData).filter(key => userData[key] !== '').length;
+        const filledFields = Object.keys(userData).filter(key => userData[key] !== '' && userData[key] !== null && userData[key] !== undefined).length;
         if (filledFields === 1) { // After user_type is saved
             typeMessage("What’s your name?");
         } else if (filledFields === 2) { // After name is saved
@@ -153,7 +107,7 @@ function showNextQuestion() {
             typeMessage("Thanks for the details! We’ve saved your enquiry. We’ll connect with you soon. Please don’t call us—we’ll reach out to you at: +91 98703 64340");
         }
     } else if (userType === 'job seeker') {
-        const filledFields = Object.keys(userData).filter(key => userData[key] !== '').length;
+        const filledFields = Object.keys(userData).filter(key => userData[key] !== '' && userData[key] !== null && userData[key] !== undefined).length;
         if (filledFields === 1) { // After user_type is saved
             typeMessage("What’s your name?");
         } else if (filledFields === 2) { // After name is saved
@@ -174,13 +128,31 @@ function showNextQuestion() {
     }
 }
 
-function validateInputByStep(input) {
-    // Removed all validations, always return true
-    return true;
+function showOptions(options) {
+    let $options = $('#messages').append('<div class="flex flex-wrap mt-4"></div>');
+    options.forEach(option => {
+        $options.append(`<button class="option-btn mr-2 mb-2" onclick="selectOption('${option}')">${option}</button>`);
+    });
+    $('#chatbox').scrollTop($('#chatbox')[0].scrollHeight);
+}
+
+function selectOption(option) {
+    $('#userInput').val(option);
+    sendMessage();
+}
+
+function typeMessage(text) {
+    let $message = $(`<div class="message bot-message typing" style="display: block; overflow: hidden; white-space: pre-wrap;">${text}</div>`);
+    $('#messages').append($message);
+    $message.css('animation', 'typing 2s steps(40, end) forwards, blink 0.75s step-end infinite'); // Adjusted for smoother timing
+    setTimeout(() => {
+        $message.removeClass('typing').css('animation', 'none').css('border-right', 'none');
+    }, 2000); // Match the updated typing animation duration
+    $('#chatbox').scrollTop($('#chatbox')[0].scrollHeight);
 }
 
 function getColumnForStep() {
-    const filledFields = Object.keys(userData).filter(key => userData[key] !== '').length;
+    const filledFields = Object.keys(userData).filter(key => userData[key] !== '' && userData[key] !== null && userData[key] !== undefined).length;
     if (userType === 'employer') {
         switch (filledFields) {
             case 0: return 'user_type'; // Already handled
@@ -207,6 +179,11 @@ function getColumnForStep() {
     return '';
 }
 
+function validateInputByStep(input) {
+    // Removed all validations, always return true
+    return true;
+}
+
 function validateLocalInput(input, type) {
     // Removed all validations, always return true
     return true;
@@ -229,15 +206,30 @@ function clearChat() {
     $('#messages').empty();
     $('#loading').removeClass('show');
     userType = '';
-    userData = { user_type: '', name: '', email: '', phone: '', position: '', hiring_count: '', requirements: '', location: '', experience: '', skills_certifications: '', location_preference: '' };
+    userData = { 
+        user_type: '', 
+        name: '', 
+        email: '', 
+        phone: '', 
+        position: '', 
+        hiring_count: '', 
+        requirements: '', 
+        location: '', 
+        experience: '', 
+        skills_certifications: '', 
+        location_preference: '' 
+    };
     userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9); // Reset user ID
+    currentStep = 0; // Reset step
     typeMessage('Hello! Are you an employer looking to hire, or a job seeker looking for a job?');
     showOptions(['Employer', 'Job Seeker']);
 }
 
-$(document).ready(function() {
-    typeMessage('Hello! Are you an employer looking to hire, or a job seeker looking for a job?');
-    showOptions(['Employer', 'Job Seeker']);
+// Enter key support
+$('#userInput').on('keypress', function(e) {
+    if (e.which === 13) { // Enter key
+        sendMessage();
+    }
 });
 
 // Dark/Light Mode Toggle
@@ -250,4 +242,6 @@ $(document).ready(function() {
     if (localStorage.getItem('theme') === 'light') {
         $('body').addClass('light-mode');
     }
+    typeMessage('Hello! Are you an employer looking to hire, or a job seeker looking for a job?');
+    showOptions(['Employer', 'Job Seeker']);
 });
