@@ -164,13 +164,18 @@ function selectOption(option) {
 }
 
 function typeMessage(text) {
-    let $message = $(`<div class="message bot-message typing" style="display: block; overflow: hidden; white-space: pre-wrap;">${text}</div>`);
+    let $message = $(`<div class="message bot-message"></div>`);
     $('#messages').append($message);
-    $message.css('animation', 'typewriter 2.5s steps(40, end) 0.5s 1 normal both, blink-cursor 0.8s step-end infinite'); // Updated for professional look
-    setTimeout(() => {
-        $message.removeClass('typing').css('animation', 'none').css('border-right', 'none');
-    }, 2500); // Match the typewriter animation duration
-    $('#chatbox').scrollTop($('#chatbox')[0].scrollHeight);
+    let index = 0;
+    let typingInterval = setInterval(() => {
+        if (index < text.length) {
+            $message.append(text.charAt(index));
+            index++;
+        } else {
+            clearInterval(typingInterval);
+        }
+        $('#chatbox').scrollTop($('#chatbox')[0].scrollHeight);
+    }, 50); // Typing effect with 50ms delay between characters
 }
 
 function getColumnForStep() {
