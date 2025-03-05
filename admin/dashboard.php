@@ -1,9 +1,17 @@
 <?php
-include 'includes/db_connect.php';
+session_start();
+include '../includes/db_connect.php';
+
+// Check if admin is logged in
+if (!isset($_SESSION['admin_id'])) {
+    header("Location: login.php");
+    exit();
+}
+
 try {
-    $employerStmt = $conn->prepare("SELECT * FROM employer_enquiries ORDER BY created_at DESC"); // Using created_at if timestamp is renamed
+    $employerStmt = $conn->prepare("SELECT * FROM employer_enquiries ORDER BY created_at DESC");
     $employerStmt->execute();
-    $jobSeekerStmt = $conn->prepare("SELECT * FROM job_seeker_enquiries ORDER BY created_at DESC"); // Using created_at if timestamp is renamed
+    $jobSeekerStmt = $conn->prepare("SELECT * FROM job_seeker_enquiries ORDER BY created_at DESC");
     $employerData = $employerStmt->fetchAll(PDO::FETCH_ASSOC);
     $jobSeekerData = $jobSeekerStmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
@@ -21,7 +29,7 @@ try {
     <title>Recruitment Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="../assets/css/style.css">
 </head>
 <body class="bg-gradient-to-br from-gray-900 to-gray-800 text-gray-100 font-sans antialiased min-h-screen flex flex-col">
     <button class="fixed top-6 right-6 bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded-full shadow-md transition-transform duration-300 hover:scale-105 toggle-btn" onclick="toggleMode()">
@@ -30,9 +38,14 @@ try {
 
     <div class="container mx-auto p-4 pt-20 flex-1 max-w-4xl">
         <div class="bg-white/5 backdrop-blur-md shadow-2xl rounded-3xl overflow-hidden border border-gray-700/50 transform transition-all duration-500 hover:scale-102 hover:shadow-3xl">
-            <div class="p-6 bg-gradient-to-r from-blue-800 via-gray-700 to-blue-600 text-white text-center rounded-t-3xl flex items-center justify-center">
-                <i class="fas fa-chart-line text-4xl mr-4 animate-pulse-slow"></i>
-                <h1 class="text-3xl font-bold tracking-tight">Recruitment Dashboard</h1>
+            <div class="p-6 bg-gradient-to-r from-blue-800 via-gray-700 to-blue-600 text-white text-center rounded-t-3xl flex items-center justify-between">
+                <div class="flex items-center">
+                    <i class="fas fa-chart-line text-4xl mr-4 animate-pulse-slow"></i>
+                    <h1 class="text-3xl font-bold tracking-tight">Recruitment Dashboard</h1>
+                </div>
+                <a href="logout.php" class="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-xl shadow-md transition-transform duration-300 hover:scale-105 flex items-center">
+                    <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                </a>
             </div>
             <div class="p-6 space-y-6">
                 <!-- Tab Navigation -->
@@ -71,7 +84,7 @@ try {
                                     <td class="p-4 border-b"><?php echo $row['hiring_count'] ?: 'N/A'; ?></td>
                                     <td class="p-4 border-b"><?php echo $row['requirements'] ?: 'N/A'; ?></td>
                                     <td class="p-4 border-b"><?php echo $row['location'] ?: 'N/A'; ?></td>
-                                    <td class="p-4 border-b"><?php echo $row['created_at'] ?: 'N/A'; ?></td> <!-- Using created_at instead of timestamp -->
+                                    <td class="p-4 border-b"><?php echo $row['created_at'] ?: 'N/A'; ?></td>
                                 </tr>
                                 <?php } ?>
                                 <?php if (empty($employerData)) { ?>
@@ -120,7 +133,7 @@ try {
                                     <td class="p-4 border-b"><?php echo $row['skills_degree'] ?: 'N/A'; ?></td>
                                     <td class="p-4 border-b"><?php echo $row['location_preference'] ?: 'N/A'; ?></td>
                                     <td class="p-4 border-b"><?php echo $row['comments'] ?: 'N/A'; ?></td>
-                                    <td class="p-4 border-b"><?php echo $row['created_at'] ?: 'N/A'; ?></td> <!-- Using created_at instead of timestamp -->
+                                    <td class="p-4 border-b"><?php echo $row['created_at'] ?: 'N/A'; ?></td>
                                 </tr>
                                 <?php } ?>
                                 <?php if (empty($jobSeekerData)) { ?>
@@ -173,4 +186,4 @@ try {
 </body>
 </html>
 
-<?php $conn = null; // Close PDO connection ?>
+<?php $conn = null; ?>
