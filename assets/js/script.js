@@ -1,21 +1,25 @@
 let userType = '';
 let userData = { 
     user_type: '', 
-    name: '', 
-    fresher_experienced: '', // New field for Fresher/Experienced
-    applying_for_job: '', // New field for Yes/No on job application
+    name: '', // Personal name
+    organisation_name: '', // New field for organisation name
+    city_state: '', // New field for city and state
     position: '', 
-    experience_years: '', // Only for Experienced (not shown for Fresher)
-    skills_degree: '', // Updated from skills_certifications to skills_degree
-    location_preference: '', 
+    hiring_count: '', 
+    requirements: '', 
     email: '', 
-    phone: '', 
-    comments: '' // New field for additional comments
+    phone: '' 
 };
 let userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9); // Unique identifier for each user
 let currentStep = 0; // Track the current step to ensure one question at a time
+let isChatComplete = false; // Flag to track if the chat is complete
 
 function sendMessage() {
+    if (isChatComplete) {
+        showValidationError('Chat is complete. Please start a new session to begin again.');
+        return;
+    }
+
     let input = $('#userInput').val().trim();
     if (input === '') {
         showValidationError('Please enter a message or select an option.');
@@ -33,6 +37,10 @@ function sendMessage() {
             return;
         }
     } else {
+        if (!validateLocalInput(input, getInputTypeForStep())) {
+            showValidationError('Invalid input. Please check the format and try again.');
+            return;
+        }
         $('#messages').append(`<div class="message user-message">${input}</div>`);
         saveUserInput(getColumnForStep(), input, userId);
     }
@@ -92,19 +100,26 @@ function showNextQuestion() {
         if (filledFields === 1) { // After user_type is saved
             typeMessage("What’s your name?");
         } else if (filledFields === 2) { // After name is saved
-            typeMessage("Please provide your email address (e.g., ankit2@email.com).");
-        } else if (filledFields === 3) { // After email is saved
-            typeMessage("Please provide your phone number.");
-        } else if (filledFields === 4) { // After phone is saved
-            typeMessage("Great! What position are you looking to hire for? E.g., Software Engineer, Sales Manager, etc.");
+            typeMessage("Your organisation name?");
+        } else if (filledFields === 3) { // After organisation_name is saved
+            typeMessage("You are from which City & State?");
+        } else if (filledFields === 4) { // After city_state is saved
+            typeMessage("Great! What position are you looking to hire for?");
         } else if (filledFields === 5) { // After position is saved
-            typeMessage("Nice! How many people do you want to hire for this role?");
+            typeMessage("Nice! How many people do you want to hire?");
         } else if (filledFields === 6) { // After hiring_count is saved
             typeMessage("Got it! Any specific skills, qualifications, or experience you require for this role?");
         } else if (filledFields === 7) { // After requirements is saved
-            typeMessage("Perfect! Any preferred location for this role, like a city or region?");
-        } else if (filledFields === 8) { // After location is saved
-            typeMessage("Thanks for the details! We’ve saved your enquiry. We’ll connect with you soon. Please don’t call us—we’ll reach out to you at: +91 98703 64340");
+            typeMessage("Please provide your email address (e.g., ankit2@email.com).");
+        } else if (filledFields === 8) { // After email is saved
+            typeMessage("Please provide your phone number.");
+        } else if (filledFields === 9) { // After phone is saved
+            typeMessage("Thanks for the details! Our Sales Team will connect with you soon. Please call us at 9871916980 for urgent discussion.");
+            // Add confirmation message that the enquiry is saved (not saved to database, just UI confirmation)
+            setTimeout(() => {
+                typeMessage("Your enquiry has been saved successfully!");
+                disableChatInput(); // Disable input and Send button after final message
+            }, 1000); // Delay to simulate processing
         }
     } else if (userType === 'job seeker') {
         const filledFields = Object.keys(userData).filter(key => userData[key] !== '' && userData[key] !== null && userData[key] !== undefined).length;
@@ -136,6 +151,11 @@ function showNextQuestion() {
             typeMessage("Any other comments?");
         } else if (filledFields === 11) { // After comments is saved
             typeMessage("Thank you for sharing your details! We have saved your information and will connect with you soon. Please note that we place candidates based on company requirements—we do not create job openings.");
+            // Add confirmation message that the enquiry is saved (not saved to database, just UI confirmation)
+            setTimeout(() => {
+                typeMessage("Your enquiry has been saved successfully!");
+                disableChatInput(); // Disable input and Send button after final message
+            }, 1000); // Delay to simulate processing
         }
     }
 }
@@ -184,12 +204,13 @@ function getColumnForStep() {
         switch (filledFields) {
             case 0: return 'user_type'; // Already handled
             case 1: return 'name';
-            case 2: return 'email';
-            case 3: return 'phone';
+            case 2: return 'organisation_name';
+            case 3: return 'city_state';
             case 4: return 'position';
             case 5: return 'hiring_count';
             case 6: return 'requirements';
-            case 7: return 'location';
+            case 7: return 'email';
+            case 8: return 'phone';
         }
     } else if (userType === 'job seeker') {
         switch (filledFields) {
@@ -209,14 +230,52 @@ function getColumnForStep() {
     return '';
 }
 
-function validateInputByStep(input) {
-    // Removed all validations, always return true
-    return true;
+function getInputTypeForStep() {
+    const filledFields = Object.keys(userData).filter(key => userData[key] !== '' && userData[key] !== null && userData[key] !== undefined).length;
+    if (userType === 'employer') {
+        switch (filledFields) {
+            case 1: return 'text'; // Name
+            case 2: return 'text'; // Organisation name
+            case 3: return 'text'; // City & State (e.g., "New York, NY")
+            case 4: return 'text'; // Position
+            case 5: return 'number'; // Hiring count
+            case 6: return 'text'; // Requirements
+            case 7: return 'email'; // Email
+            case 8: return 'phone'; // Phone
+        }
+    } else if (userType === 'job seeker') {
+        switch (filledFields) {
+            case 1: return 'text'; // Name
+            case 4: return 'text'; // Position
+            case 5: return 'number'; // Experience years (for Experienced only)
+            case 6: return 'text'; // Skills/Degree
+            case 7: return 'text'; // Location preference
+            case 8: return 'email'; // Email
+            case 9: return 'phone'; // Phone
+            case 10: return 'text'; // Comments
+        }
+    }
+    return 'text';
 }
 
 function validateLocalInput(input, type) {
-    // Removed all validations, always return true
-    return true;
+    switch (type) {
+        case 'email':
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input); // Basic email validation
+        case 'phone':
+            return /^[0-9]{10,15}$/.test(input); // 10-15 digit phone number
+        case 'number':
+            return /^[0-9]+$/.test(input) && parseInt(input) > 0; // Positive numbers only
+        case 'text':
+            return input.trim().length > 0; // Non-empty text
+        default:
+            return true;
+    }
+}
+
+function validateInputByStep(input) {
+    // This is now handled by validateLocalInput in sendMessage
+    return validateLocalInput(input, getInputTypeForStep());
 }
 
 function empty(str) {
@@ -232,6 +291,12 @@ function hideValidationError() {
     $('#validationError').addClass('hidden').removeClass('show');
 }
 
+function disableChatInput() {
+    $('#userInput').prop('disabled', true).attr('placeholder', 'Chat completed. Clear to start anew.');
+    $('button[onclick="sendMessage()"]').prop('disabled', true).addClass('opacity-50 cursor-not-allowed').removeClass('hover:scale-105');
+    isChatComplete = true; // Set flag to prevent further input
+}
+
 function clearChat() {
     $('#messages').empty();
     $('#loading').removeClass('show');
@@ -239,25 +304,26 @@ function clearChat() {
     userData = { 
         user_type: '', 
         name: '', 
-        fresher_experienced: '', 
-        applying_for_job: '', 
+        organisation_name: '', 
+        city_state: '', 
         position: '', 
-        experience_years: '', 
-        skills_degree: '', 
-        location_preference: '', 
+        hiring_count: '', 
+        requirements: '', 
         email: '', 
-        phone: '', 
-        comments: '' 
+        phone: '' 
     };
     userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9); // Reset user ID
     currentStep = 0; // Reset step
+    isChatComplete = false; // Reset chat completion flag
+    $('#userInput').prop('disabled', false).attr('placeholder', 'Type your message or select an option...');
+    $('button[onclick="sendMessage()"]').prop('disabled', false).removeClass('opacity-50 cursor-not-allowed').addClass('hover:scale-105');
     typeMessage('Hello! Are you an employer looking to hire, or a job seeker looking for a job?');
     showOptions(['Employer', 'Job Seeker']);
 }
 
 // Enter key support
 $('#userInput').on('keypress', function(e) {
-    if (e.which === 13) { // Enter key
+    if (e.which === 13 && !isChatComplete) { // Enter key, only if chat isn’t complete
         sendMessage();
     }
 });

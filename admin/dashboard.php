@@ -9,11 +9,17 @@ if (!isset($_SESSION['admin_id'])) {
 }
 
 try {
+    // Use created_at for ordering (ensure it exists now)
     $employerStmt = $conn->prepare("SELECT * FROM employer_enquiries ORDER BY created_at DESC");
     $employerStmt->execute();
-    $jobSeekerStmt = $conn->prepare("SELECT * FROM job_seeker_enquiries ORDER BY created_at DESC");
     $employerData = $employerStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $jobSeekerStmt = $conn->prepare("SELECT * FROM job_seeker_enquiries ORDER BY created_at DESC");
+    $jobSeekerStmt->execute();
     $jobSeekerData = $jobSeekerStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    error_log("Employer data count: " . count($employerData));
+    error_log("Job Seeker data count: " . count($jobSeekerData));
 } catch (PDOException $e) {
     error_log("Dashboard query error: " . $e->getMessage());
     $employerData = [];
@@ -63,12 +69,13 @@ try {
                                     <th class="p-4 border-b text-left">ID</th>
                                     <th class="p-4 border-b text-left">User ID</th>
                                     <th class="p-4 border-b text-left">Name</th>
+                                    <th class="p-4 border-b text-left">Organisation Name</th>
+                                    <th class="p-4 border-b text-left">City & State</th>
                                     <th class="p-4 border-b text-left">Email</th>
                                     <th class="p-4 border-b text-left">Phone</th>
                                     <th class="p-4 border-b text-left">Position</th>
                                     <th class="p-4 border-b text-left">Hiring Count</th>
                                     <th class="p-4 border-b text-left">Requirements</th>
-                                    <th class="p-4 border-b text-left">Location</th>
                                     <th class="p-4 border-b text-left">Timestamp</th>
                                 </tr>
                             </thead>
@@ -78,18 +85,19 @@ try {
                                     <td class="p-4 border-b"><?php echo $row['id'] ?: 'N/A'; ?></td>
                                     <td class="p-4 border-b"><?php echo $row['user_id'] ?: 'N/A'; ?></td>
                                     <td class="p-4 border-b"><?php echo $row['name'] ?: 'N/A'; ?></td>
+                                    <td class="p-4 border-b"><?php echo $row['organisation_name'] ?: 'N/A'; ?></td>
+                                    <td class="p-4 border-b"><?php echo $row['city_state'] ?: 'N/A'; ?></td>
                                     <td class="p-4 border-b"><?php echo $row['email'] ?: 'N/A'; ?></td>
                                     <td class="p-4 border-b"><?php echo $row['phone'] ?: 'N/A'; ?></td>
                                     <td class="p-4 border-b"><?php echo $row['position'] ?: 'N/A'; ?></td>
                                     <td class="p-4 border-b"><?php echo $row['hiring_count'] ?: 'N/A'; ?></td>
                                     <td class="p-4 border-b"><?php echo $row['requirements'] ?: 'N/A'; ?></td>
-                                    <td class="p-4 border-b"><?php echo $row['location'] ?: 'N/A'; ?></td>
                                     <td class="p-4 border-b"><?php echo $row['created_at'] ?: 'N/A'; ?></td>
                                 </tr>
                                 <?php } ?>
                                 <?php if (empty($employerData)) { ?>
                                 <tr>
-                                    <td colspan="10" class="p-4 text-center text-gray-400">No employer enquiries found.</td>
+                                    <td colspan="11" class="p-4 text-center text-gray-400">No employer enquiries found.</td>
                                 </tr>
                                 <?php } ?>
                             </tbody>

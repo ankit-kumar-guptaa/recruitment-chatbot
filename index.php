@@ -9,17 +9,22 @@
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body class="bg-gradient-to-br from-gray-900 to-gray-800 text-gray-100 font-sans antialiased min-h-screen flex flex-col">
-    <header class="fixed top-0 left-0 w-full bg-gradient-to-r from-blue-900 via-gray-800 to-blue-700 shadow-lg z-50">
-        <div class="container mx-auto p-4 max-w-3xl flex items-center justify-between">
-            <div class="flex items-center">
-                <i class="fas fa-robot text-3xl text-white mr-3 animate-pulse-slow"></i>
-                <h1 class="text-2xl font-bold tracking-tight text-white">Recruitment AI</h1>
-            </div>
-            <button class="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded-full shadow-md transition-transform duration-300 hover:scale-105 toggle-btn" onclick="toggleMode()">
-                <i class="fas fa-adjust mr-2"></i> Toggle Theme
-            </button>
+<header class="fixed top-0 left-0 w-full bg-gradient-to-r from-blue-900 via-gray-800 to-blue-700 shadow-lg z-50">
+    <div class="container mx-auto p-4 max-w-3xl flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+            <!-- Logo with improved styling -->
+            <img src="https://elitecorporatesolutions.com/images/logo/logo.png" alt="Elite Corporate Solutions Logo" class="h-10 w-auto object-contain transition-transform duration-300 hover:scale-105">
+            <!-- Robot Icon -->
+            <i class="fas fa-robot text-3xl text-white animate-pulse-slow"></i>
+            <!-- Title -->
+            <h1 class="text-2xl font-bold tracking-tight text-white">Recruitment AI</h1>
         </div>
-    </header>
+        <!-- Theme Toggle Button -->
+        <button class="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded-full shadow-md transition-transform duration-300 hover:scale-105 toggle-btn" onclick="toggleMode()">
+            <i class="fas fa-adjust mr-2"></i> Dark/Light Mode
+        </button>
+    </div>
+</header>
 
     <div class="container mx-auto p-4 pt-20 flex-1 max-w-3xl">
         <div class="bg-white/5 backdrop-blur-md shadow-2xl rounded-3xl overflow-hidden border border-gray-700/50 transform transition-all duration-500 hover:scale-102 hover:shadow-3xl">

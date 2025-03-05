@@ -3,7 +3,7 @@ session_start();
 include '../includes/db_connect.php';
 
 // Define the security code (hardcoded for now, move to config/env in production)
-define('SECRET_ADMIN_CODE', 'RecruitmentAI2025');
+define('SECRET_ADMIN_CODE', 'EliteRecruitmentAI2025');
 
 if (isset($_POST['signup'])) {
     $username = $_POST['username'] ?? '';
