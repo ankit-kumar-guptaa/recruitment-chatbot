@@ -22,10 +22,4 @@ try {
     echo json_encode(['error' => 'Database connection failed: Please check your settings or contact support at support@elitecorporatesolutions.com.']);
     exit;
 }
-
-function validateInput($input, $type = 'text') {
-    $input = trim($input);
-    // Removed all validations, always return true
-    return true;
-}
 ?>
