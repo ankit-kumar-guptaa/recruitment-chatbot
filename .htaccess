@@ -1,0 +1,1 @@
+Header set Content-Security-Policy "default-src 'self'; script-src 'self' https://recruitment-chatbot.greencarcarpool.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://recruitment-chatbot.greencarcarpool.com;"
