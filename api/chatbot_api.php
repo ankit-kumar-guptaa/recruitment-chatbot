@@ -7,15 +7,33 @@ header('Access-Control-Allow-Headers: Content-Type');
 include '../includes/db_connect.php';
 session_start();
 
+// Debug: Log the incoming request
 error_log("Received API request: " . print_r($_POST, true));
+error_log("Request method: " . $_SERVER['REQUEST_METHOD']);
 
 $response = ['status' => 'error', 'message' => 'Invalid request'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Check if $_POST is empty
+    if (empty($_POST)) {
+        $response = ['status' => 'error', 'message' => 'No POST data received.'];
+        echo json_encode($response);
+        exit();
+    }
+
     $action = $_POST['action'] ?? '';
     $userId = $_POST['userId'] ?? 'user_' . time() . '_' . rand(1000, 9999);
     $userType = $_SESSION['userType_' . $userId] ?? '';
     $currentStep = $_SESSION['currentStep_' . $userId] ?? 0;
+
+    // Debug: Log the action and userType
+    error_log("Action: " . $action . ", UserType: " . $userType . ", CurrentStep: " . $currentStep);
+
+    if (empty($action)) {
+        $response = ['status' => 'error', 'message' => 'Action parameter is missing.'];
+        echo json_encode($response);
+        exit();
+    }
 
     if ($action === 'start') {
         if (empty($userType)) {
@@ -28,13 +46,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } elseif ($action === 'send') {
         $message = $_POST['message'] ?? '';
+        error_log("Message received: " . $message);
+
+        if (empty($message)) {
+            $response = ['status' => 'error', 'message' => 'Message parameter is missing.'];
+            echo json_encode($response);
+            exit();
+        }
+
         if (empty($userType)) {
-            if (stripos($message, 'employer') !== false || stripos($message, 'job seeker') !== false) {
-                $userType = (stripos($message, 'employer') !== false) ? 'employer' : 'job_seeker';
+            // Normalize message to lowercase for comparison
+            $normalizedMessage = strtolower($message);
+            if (strpos($normalizedMessage, 'employer') !== false || strpos($normalizedMessage, 'job seeker') !== false) {
+                $userType = (strpos($normalizedMessage, 'employer') !== false) ? 'employer' : 'job_seeker';
                 $_SESSION['userType_' . $userId] = $userType;
                 saveUserInput('user_type', $userType, $userId);
                 $currentStep = 1;
                 $_SESSION['currentStep_' . $userId] = $currentStep;
+
+                $response = getNextResponse($userType, $currentStep, $userId);
+                $response['step'] = $currentStep;
             } else {
                 $response = ['status' => 'error', 'message' => 'Please select "Employer" or "Job Seeker".'];
             }
@@ -45,42 +76,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $currentStep++;
                 $_SESSION['currentStep_' . $userId] = $currentStep;
                 $response = getNextResponse($userType, $currentStep, $userId);
-                $response['step'] = $currentStep; // Sync step
+                $response['step'] = $currentStep;
             } else {
                 $response = ['status' => 'error', 'message' => 'Invalid input. ' . getValidationMessage($column, $message)];
             }
         }
+    } else {
+        $response = ['status' => 'error', 'message' => 'Invalid action: ' . $action];
     }
-
-    echo json_encode($response);
-    exit();
+} else {
+    $response = ['status' => 'error', 'message' => 'Invalid request method. Use POST.'];
 }
+
+echo json_encode($response);
+exit();
 
 function saveUserInput($column, $value, $userId) {
     global $conn;
     $table = ($_SESSION['userType_' . $userId] == 'employer') ? 'employer_enquiries' : 'job_seeker_enquiries';
 
-    $conn->beginTransaction();
-    $checkStmt = $conn->prepare("SELECT COUNT(*) FROM $table WHERE user_id = ?");
-    $checkStmt->execute([$userId]);
-    $exists = $checkStmt->fetchColumn();
+    try {
+        $conn->beginTransaction();
+        $checkStmt = $conn->prepare("SELECT COUNT(*) FROM $table WHERE user_id = ?");
+        $checkStmt->execute([$userId]);
+        $exists = $checkStmt->fetchColumn();
 
-    if ($exists) {
-        $updateQuery = "UPDATE $table SET $column = ?, created_at = NOW() WHERE user_id = ?";
-        $stmt = $conn->prepare($updateQuery);
-        $stmt->execute([$value, $userId]);
-    } else {
-        if ($column === 'user_type') {
-            $insertQuery = "INSERT INTO $table (user_id, user_type, created_at) VALUES (?, ?, NOW())";
-            $stmt = $conn->prepare($insertQuery);
-            $stmt->execute([$userId, $value]);
-        } else {
-            $insertQuery = "INSERT INTO $table ($column, user_id, created_at) VALUES (?, ?, NOW())";
-            $stmt = $conn->prepare($insertQuery);
+        if ($exists) {
+            $updateQuery = "UPDATE $table SET $column = ?, created_at = NOW() WHERE user_id = ?";
+            $stmt = $conn->prepare($updateQuery);
             $stmt->execute([$value, $userId]);
+        } else {
+            if ($column === 'user_type') {
+                $insertQuery = "INSERT INTO $table (user_id, user_type, created_at) VALUES (?, ?, NOW())";
+                $stmt = $conn->prepare($insertQuery);
+                $stmt->execute([$userId, $value]);
+            } else {
+                $insertQuery = "INSERT INTO $table ($column, user_id, created_at) VALUES (?, ?, NOW())";
+                $stmt = $conn->prepare($insertQuery);
+                $stmt->execute([$value, $userId]);
+            }
         }
+        $conn->commit();
+    } catch (PDOException $e) {
+        $conn->rollBack();
+        error_log("Database save error: " . $e->getMessage());
+        throw $e;
     }
-    $conn->commit();
 }
 
 function getColumnForStep($step, $userType) {
