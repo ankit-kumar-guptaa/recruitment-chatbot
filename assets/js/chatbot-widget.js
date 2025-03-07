@@ -203,8 +203,7 @@
     // Global function definitions
     window.selectOption = function(option) {
         document.getElementById('userInput').value = option;
-        sendMessage(); // Auto send on option click
-        console.log('Selected option:', option); // Debug log
+        sendMessage();
     };
 
     window.sendMessage = function() {
@@ -213,24 +212,8 @@
             return;
         }
 
-        let input = document.getElementById('userInput').value.trim().toLowerCase();
+        let input = document.getElementById('userInput').value.trim();
         const column = getColumnForStep(currentStep, userType);
-        console.log('Input:', input, 'Step:', currentStep, 'UserType:', userType); // Debug log
-
-        if (currentStep === 0) {
-            if (input.includes('employer') || input.includes('job seeker')) { // Lenient check
-                userType = input.includes('employer') ? 'employer' : 'job_seeker';
-                typeMessage(input, 'user');
-                document.getElementById('userInput').value = '';
-                document.getElementById('chatbox').scrollTop = document.getElementById('chatbox').scrollHeight;
-                proceedNextStep();
-                return;
-            } else {
-                showValidationError('Please select "Employer" or "Job Seeker".');
-                return;
-            }
-        }
-
         if (!validateInput(input, column)) {
             showValidationError(getValidationMessage(column, input));
             return;
@@ -241,11 +224,10 @@
         document.getElementById('chatbox').scrollTop = document.getElementById('chatbox').scrollHeight;
 
         const xhr = new XMLHttpRequest();
-        xhr.open('POST', 'https://recruitment-chatbot.greencarpool.com/api/chatbot_api.php', true);
+        xhr.open('POST', 'https://recruitment-chatbot.greencarcarpool.com/api/chatbot_api.php', true);
         xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
         xhr.onreadystatechange = function() {
             if (xhr.readyState === 4) {
-                console.log('API Response:', xhr.responseText); // Debug API response
                 if (xhr.status === 200) {
                     const data = JSON.parse(xhr.responseText);
                     if (data.status === 'success') {
@@ -262,19 +244,12 @@
                         showValidationError(data.message);
                     }
                 } else {
-                    showValidationError('Error connecting to server. Status: ' + xhr.status);
+                    showValidationError('Error connecting to server. Please try again.');
                 }
             }
         };
         xhr.send('action=send&userId=' + encodeURIComponent(userId) + '&message=' + encodeURIComponent(input));
     };
-
-    // Add Enter key support
-    document.getElementById('userInput').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            sendMessage();
-        }
-    });
 
     window.clearChat = function() {
         document.getElementById('messages').innerHTML = '';
@@ -317,11 +292,10 @@
 
     function startChat() {
         const xhr = new XMLHttpRequest();
-        xhr.open('POST', 'https://recruitment-chatbot.greencarpool.com/api/chatbot_api.php', true);
+        xhr.open('POST', 'https://recruitment-chatbot.greencarcarpool.com/api/chatbot_api.php', true);
         xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
         xhr.onreadystatechange = function() {
             if (xhr.readyState === 4) {
-                console.log('Start API Response:', xhr.responseText); // Debug start response
                 if (xhr.status === 200) {
                     const data = JSON.parse(xhr.responseText);
                     if (data.status === 'success') {
@@ -332,35 +306,11 @@
                         showValidationError(data.message || 'Error starting chat.');
                     }
                 } else {
-                    showValidationError('Error connecting to server. Status: ' + xhr.status);
+                    showValidationError('Error connecting to server. Please try again.');
                 }
             }
         };
         xhr.send('action=start&userId=' + encodeURIComponent(userId));
-    }
-
-    function proceedNextStep() {
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', 'https://recruitment-chatbot.greencarpool.com/api/chatbot_api.php', true);
-        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState === 4) {
-                console.log('Proceed API Response:', xhr.responseText); // Debug proceed response
-                if (xhr.status === 200) {
-                    const data = JSON.parse(xhr.responseText);
-                    if (data.status === 'success') {
-                        typeMessage(data.question, 'bot', true);
-                        if (data.options) showOptions(data.options);
-                        currentStep = data.step || currentStep + 1;
-                    } else {
-                        showValidationError(data.message);
-                    }
-                } else {
-                    showValidationError('Error connecting to server. Status: ' + xhr.status);
-                }
-            }
-        };
-        xhr.send('action=send&userId=' + encodeURIComponent(userId) + '&message=' + encodeURIComponent(userType));
     }
 
     function showOptions(options) {

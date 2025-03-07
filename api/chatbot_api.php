@@ -1,28 +1,19 @@
 <?php
 header('Content-Type: application/json');
-
-// Allow CORS for live server
-$allowedOrigins = ['https://recruitment-chatbot.greencarpool.com', 'http://localhost'];
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-if (in_array($origin, $allowedOrigins)) {
-    header('Access-Control-Allow-Origin: ' . $origin);
-} else {
-    header('Access-Control-Allow-Origin: *'); // Fallback for testing
-}
+header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST');
 header('Access-Control-Allow-Headers: Content-Type');
 
+include '../includes/db_connect.php';
 session_start();
 
-error_log("Received API request: " . print_r($_POST, true)); // Debug log
+error_log("Received API request: " . print_r($_POST, true));
 
 $response = ['status' => 'error', 'message' => 'Invalid request'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     $userId = $_POST['userId'] ?? 'user_' . time() . '_' . rand(1000, 9999);
-    $message = $_POST['message'] ?? '';
-
     $userType = $_SESSION['userType_' . $userId] ?? '';
     $currentStep = $_SESSION['currentStep_' . $userId] ?? 0;
 
@@ -36,31 +27,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ];
         }
     } elseif ($action === 'send') {
-        if (empty($message)) {
-            $response = ['status' => 'error', 'message' => 'Message cannot be empty.'];
-        } else {
-            if (empty($userType)) {
-                $messageLower = strtolower($message);
-                if (strpos($messageLower, 'employer') !== false || strpos($messageLower, 'job seeker') !== false) {
-                    $userType = (strpos($messageLower, 'employer') !== false) ? 'employer' : 'job_seeker';
-                    $_SESSION['userType_' . $userId] = $userType;
-                    saveUserInput('user_type', $userType, $userId);
-                    $currentStep = 1;
-                    $_SESSION['currentStep_' . $userId] = $currentStep;
-                } else {
-                    $response = ['status' => 'error', 'message' => 'Please select "Employer" or "Job Seeker".'];
-                }
+        $message = $_POST['message'] ?? '';
+        if (empty($userType)) {
+            if (stripos($message, 'employer') !== false || stripos($message, 'job seeker') !== false) {
+                $userType = (stripos($message, 'employer') !== false) ? 'employer' : 'job_seeker';
+                $_SESSION['userType_' . $userId] = $userType;
+                saveUserInput('user_type', $userType, $userId);
+                $currentStep = 1;
+                $_SESSION['currentStep_' . $userId] = $currentStep;
             } else {
-                $column = getColumnForStep($currentStep, $userType);
-                if ($column && validateInput($message, $column)) {
-                    saveUserInput($column, $message, $userId);
-                    $currentStep++;
-                    $_SESSION['currentStep_' . $userId] = $currentStep;
-                    $response = getNextResponse($userType, $currentStep, $userId);
-                    $response['step'] = $currentStep;
-                } else {
-                    $response = ['status' => 'error', 'message' => 'Invalid input. ' . getValidationMessage($column, $message)];
-                }
+                $response = ['status' => 'error', 'message' => 'Please select "Employer" or "Job Seeker".'];
+            }
+        } else {
+            $column = getColumnForStep($currentStep, $userType);
+            if ($column && validateInput($message, $column)) {
+                saveUserInput($column, $message, $userId);
+                $currentStep++;
+                $_SESSION['currentStep_' . $userId] = $currentStep;
+                $response = getNextResponse($userType, $currentStep, $userId);
+                $response['step'] = $currentStep; // Sync step
+            } else {
+                $response = ['status' => 'error', 'message' => 'Invalid input. ' . getValidationMessage($column, $message)];
             }
         }
     }
@@ -73,35 +60,27 @@ function saveUserInput($column, $value, $userId) {
     global $conn;
     $table = ($_SESSION['userType_' . $userId] == 'employer') ? 'employer_enquiries' : 'job_seeker_enquiries';
 
-    try {
-        $conn->beginTransaction();
-        $checkStmt = $conn->prepare("SELECT COUNT(*) FROM $table WHERE user_id = ?");
-        $checkStmt->execute([$userId]);
-        $exists = $checkStmt->fetchColumn();
+    $conn->beginTransaction();
+    $checkStmt = $conn->prepare("SELECT COUNT(*) FROM $table WHERE user_id = ?");
+    $checkStmt->execute([$userId]);
+    $exists = $checkStmt->fetchColumn();
 
-        if ($exists) {
-            $updateQuery = "UPDATE $table SET $column = ?, created_at = NOW() WHERE user_id = ?";
-            $stmt = $conn->prepare($updateQuery);
-            $stmt->execute([$value, $userId]);
+    if ($exists) {
+        $updateQuery = "UPDATE $table SET $column = ?, created_at = NOW() WHERE user_id = ?";
+        $stmt = $conn->prepare($updateQuery);
+        $stmt->execute([$value, $userId]);
+    } else {
+        if ($column === 'user_type') {
+            $insertQuery = "INSERT INTO $table (user_id, user_type, created_at) VALUES (?, ?, NOW())";
+            $stmt = $conn->prepare($insertQuery);
+            $stmt->execute([$userId, $value]);
         } else {
-            if ($column === 'user_type') {
-                $insertQuery = "INSERT INTO $table (user_id, user_type, created_at) VALUES (?, ?, NOW())";
-                $stmt = $conn->prepare($insertQuery);
-                $stmt->execute([$userId, $value]);
-            } else {
-                $insertQuery = "INSERT INTO $table ($column, user_id, created_at) VALUES (?, ?, NOW())";
-                $stmt = $conn->prepare($insertQuery);
-                $stmt->execute([$value, $userId]);
-            }
+            $insertQuery = "INSERT INTO $table ($column, user_id, created_at) VALUES (?, ?, NOW())";
+            $stmt = $conn->prepare($insertQuery);
+            $stmt->execute([$value, $userId]);
         }
-        $conn->commit();
-    } catch (PDOException $e) {
-        $conn->rollBack();
-        error_log("Database error: " . $e->getMessage());
-        $response = ['status' => 'error', 'message' => 'Database error. Please try again.'];
-        echo json_encode($response);
-        exit();
     }
+    $conn->commit();
 }
 
 function getColumnForStep($step, $userType) {
@@ -118,7 +97,7 @@ function getColumnForStep($step, $userType) {
             default: return '';
         }
     } elseif ($userType === 'job_seeker') {
-        switch (step) {
+        switch ($step) {
             case 1: return 'name';
             case 2: return 'fresher_experienced';
             case 3: return 'applying_for_job';
