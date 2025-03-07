@@ -211,25 +211,28 @@
             showValidationError('Chat is complete. Please clear to start anew.');
             return;
         }
-
+    
         let input = document.getElementById('userInput').value.trim();
+        console.log('Sending message: ' + input + ', Current Step: ' + currentStep + ', User Type: ' + userType);
         const column = getColumnForStep(currentStep, userType);
         if (!validateInput(input, column)) {
             showValidationError(getValidationMessage(column, input));
             return;
         }
-
+    
         typeMessage(input, 'user');
         document.getElementById('userInput').value = '';
         document.getElementById('chatbox').scrollTop = document.getElementById('chatbox').scrollHeight;
-
+    
         const xhr = new XMLHttpRequest();
         xhr.open('POST', 'https://recruitment-chatbot.greencarcarpool.com/api/chatbot_api.php', true);
         xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        console.log('Sending request with data: action=send&userId=' + encodeURIComponent(userId) + '&message=' + encodeURIComponent(input));
         xhr.onreadystatechange = function() {
             if (xhr.readyState === 4) {
                 if (xhr.status === 200) {
                     const data = JSON.parse(xhr.responseText);
+                    console.log('Response received: ', data);
                     if (data.status === 'success') {
                         typeMessage(data.question, 'bot', true);
                         if (data.options) showOptions(data.options);
@@ -240,6 +243,7 @@
                             }, 1000);
                         }
                         currentStep = data.step || currentStep + 1;
+                        console.log('Updated Step: ' + currentStep);
                     } else {
                         showValidationError(data.message);
                     }

@@ -10,11 +10,11 @@ session_start();
 // Debug: Log the incoming request
 error_log("Received API request: " . print_r($_POST, true));
 error_log("Request method: " . $_SERVER['REQUEST_METHOD']);
+error_log("Session data: " . print_r($_SESSION, true));
 
 $response = ['status' => 'error', 'message' => 'Invalid request'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Check if $_POST is empty
     if (empty($_POST)) {
         $response = ['status' => 'error', 'message' => 'No POST data received.'];
         echo json_encode($response);
@@ -26,7 +26,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $userType = $_SESSION['userType_' . $userId] ?? '';
     $currentStep = $_SESSION['currentStep_' . $userId] ?? 0;
 
-    // Debug: Log the action and userType
     error_log("Action: " . $action . ", UserType: " . $userType . ", CurrentStep: " . $currentStep);
 
     if (empty($action)) {
@@ -45,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ];
         }
     } elseif ($action === 'send') {
-        $message = $_POST['message'] ?? '';
+        $message = trim($_POST['message'] ?? '');
         error_log("Message received: " . $message);
 
         if (empty($message)) {
@@ -55,7 +54,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if (empty($userType)) {
-            // Normalize message to lowercase for comparison
             $normalizedMessage = strtolower($message);
             if (strpos($normalizedMessage, 'employer') !== false || strpos($normalizedMessage, 'job seeker') !== false) {
                 $userType = (strpos($normalizedMessage, 'employer') !== false) ? 'employer' : 'job_seeker';
@@ -63,7 +61,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 saveUserInput('user_type', $userType, $userId);
                 $currentStep = 1;
                 $_SESSION['currentStep_' . $userId] = $currentStep;
-
                 $response = getNextResponse($userType, $currentStep, $userId);
                 $response['step'] = $currentStep;
             } else {
@@ -74,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($column && validateInput($message, $column)) {
                 saveUserInput($column, $message, $userId);
                 $currentStep++;
-                $_SESSION['currentStep_' . $userId] = $currentStep;
+                $_SESSION['currentStep_' . $userId] = $currentStep; // Ensure step is updated
                 $response = getNextResponse($userType, $currentStep, $userId);
                 $response['step'] = $currentStep;
             } else {
@@ -106,15 +103,11 @@ function saveUserInput($column, $value, $userId) {
             $stmt = $conn->prepare($updateQuery);
             $stmt->execute([$value, $userId]);
         } else {
-            if ($column === 'user_type') {
-                $insertQuery = "INSERT INTO $table (user_id, user_type, created_at) VALUES (?, ?, NOW())";
-                $stmt = $conn->prepare($insertQuery);
-                $stmt->execute([$userId, $value]);
-            } else {
-                $insertQuery = "INSERT INTO $table ($column, user_id, created_at) VALUES (?, ?, NOW())";
-                $stmt = $conn->prepare($insertQuery);
-                $stmt->execute([$value, $userId]);
-            }
+            $columns = ($column === 'user_type') ? 'user_id, user_type, created_at' : "$column, user_id, created_at";
+            $values = ($column === 'user_type') ? "?, ?, NOW()" : "?, ?, NOW()";
+            $insertQuery = "INSERT INTO $table ($columns) VALUES ($values)";
+            $stmt = $conn->prepare($insertQuery);
+            $stmt->execute([$value, $userId]);
         }
         $conn->commit();
     } catch (PDOException $e) {
@@ -126,33 +119,31 @@ function saveUserInput($column, $value, $userId) {
 
 function getColumnForStep($step, $userType) {
     if ($userType === 'employer') {
-        switch ($step) {
-            case 1: return 'name';
-            case 2: return 'organisation_name';
-            case 3: return 'city_state';
-            case 4: return 'position';
-            case 5: return 'hiring_count';
-            case 6: return 'requirements';
-            case 7: return 'email';
-            case 8: return 'phone';
-            default: return '';
-        }
+        $steps = [
+            1 => 'name',
+            2 => 'organisation_name',
+            3 => 'city_state',
+            4 => 'position',
+            5 => 'hiring_count',
+            6 => 'requirements',
+            7 => 'email',
+            8 => 'phone'
+        ];
     } elseif ($userType === 'job_seeker') {
-        switch ($step) {
-            case 1: return 'name';
-            case 2: return 'fresher_experienced';
-            case 3: return 'applying_for_job';
-            case 4: return 'position';
-            case 5: return 'experience_years';
-            case 6: return 'skills_degree';
-            case 7: return 'location_preference';
-            case 8: return 'email';
-            case 9: return 'phone';
-            case 10: return 'comments';
-            default: return '';
-        }
+        $steps = [
+            1 => 'name',
+            2 => 'fresher_experienced',
+            3 => 'applying_for_job',
+            4 => 'position',
+            5 => 'experience_years',
+            6 => 'skills_degree',
+            7 => 'location_preference',
+            8 => 'email',
+            9 => 'phone',
+            10 => 'comments'
+        ];
     }
-    return '';
+    return $steps[$step] ?? '';
 }
 
 function getNextResponse($userType, $step, $userId) {
