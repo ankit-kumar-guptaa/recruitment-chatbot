@@ -4,13 +4,18 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST');
 header('Access-Control-Allow-Headers: Content-Type');
 
-include '../includes/db_connect.php';
+// Ensure session is started properly
 session_start();
+if (!session_id()) {
+    error_log("Session not started properly.");
+    session_start();
+}
 
-// Debug: Log the incoming request
+include '../includes/db_connect.php';
+
+// Debug: Log the incoming request and session
 error_log("Received API request: " . print_r($_POST, true));
-error_log("Request method: " . $_SERVER['REQUEST_METHOD']);
-error_log("Session data: " . print_r($_SESSION, true));
+error_log("Session data before processing: " . print_r($_SESSION, true));
 
 $response = ['status' => 'error', 'message' => 'Invalid request'];
 
@@ -23,8 +28,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $action = $_POST['action'] ?? '';
     $userId = $_POST['userId'] ?? 'user_' . time() . '_' . rand(1000, 9999);
-    $userType = $_SESSION['userType_' . $userId] ?? '';
-    $currentStep = $_SESSION['currentStep_' . $userId] ?? 0;
+    
+    // Ensure session variables are initialized
+    if (!isset($_SESSION['userType_' . $userId])) {
+        $_SESSION['userType_' . $userId] = '';
+    }
+    if (!isset($_SESSION['currentStep_' . $userId])) {
+        $_SESSION['currentStep_' . $userId] = 0;
+    }
+
+    $userType = $_SESSION['userType_' . $userId];
+    $currentStep = $_SESSION['currentStep_' . $userId];
 
     error_log("Action: " . $action . ", UserType: " . $userType . ", CurrentStep: " . $currentStep);
 
@@ -35,14 +49,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'start') {
-        if (empty($userType)) {
-            $response = [
-                'status' => 'success',
-                'message' => 'Chat started',
-                'question' => 'Hello! Are you an employer looking to hire, or a job seeker looking for a job?',
-                'options' => ['Employer', 'Job Seeker']
-            ];
-        }
+        $_SESSION['userType_' . $userId] = ''; // Reset userType on start
+        $_SESSION['currentStep_' . $userId] = 0;
+        $response = [
+            'status' => 'success',
+            'message' => 'Chat started',
+            'question' => 'Hello! Are you an employer looking to hire, or a job seeker looking for a job?',
+            'options' => ['Employer', 'Job Seeker']
+        ];
     } elseif ($action === 'send') {
         $message = trim($_POST['message'] ?? '');
         error_log("Message received: " . $message);
@@ -63,6 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['currentStep_' . $userId] = $currentStep;
                 $response = getNextResponse($userType, $currentStep, $userId);
                 $response['step'] = $currentStep;
+                $response['userType'] = $userType;
             } else {
                 $response = ['status' => 'error', 'message' => 'Please select "Employer" or "Job Seeker".'];
             }
@@ -71,9 +86,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($column && validateInput($message, $column)) {
                 saveUserInput($column, $message, $userId);
                 $currentStep++;
-                $_SESSION['currentStep_' . $userId] = $currentStep; // Ensure step is updated
+                $_SESSION['currentStep_' . $userId] = $currentStep;
                 $response = getNextResponse($userType, $currentStep, $userId);
                 $response['step'] = $currentStep;
+                $response['userType'] = $userType;
             } else {
                 $response = ['status' => 'error', 'message' => 'Invalid input. ' . getValidationMessage($column, $message)];
             }
@@ -85,6 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $response = ['status' => 'error', 'message' => 'Invalid request method. Use POST.'];
 }
 
+error_log("Session data after processing: " . print_r($_SESSION, true));
 echo json_encode($response);
 exit();
 

@@ -200,7 +200,12 @@
     aiLabel.textContent = 'Powered by AI Recruit AI';
     document.body.appendChild(aiLabel);
 
-    // Global function definitions
+    // Initialize chatbot
+    let userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    let currentStep = 0;
+    let userType = '';
+    let isChatComplete = false;
+
     window.selectOption = function(option) {
         document.getElementById('userInput').value = option;
         sendMessage();
@@ -211,7 +216,7 @@
             showValidationError('Chat is complete. Please clear to start anew.');
             return;
         }
-    
+
         let input = document.getElementById('userInput').value.trim();
         console.log('Sending message: ' + input + ', Current Step: ' + currentStep + ', User Type: ' + userType);
         const column = getColumnForStep(currentStep, userType);
@@ -219,11 +224,11 @@
             showValidationError(getValidationMessage(column, input));
             return;
         }
-    
+
         typeMessage(input, 'user');
         document.getElementById('userInput').value = '';
         document.getElementById('chatbox').scrollTop = document.getElementById('chatbox').scrollHeight;
-    
+
         const xhr = new XMLHttpRequest();
         xhr.open('POST', 'https://recruitment-chatbot.greencarcarpool.com/api/chatbot_api.php', true);
         xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
@@ -243,7 +248,8 @@
                             }, 1000);
                         }
                         currentStep = data.step || currentStep + 1;
-                        console.log('Updated Step: ' + currentStep);
+                        userType = data.userType || userType; // Sync userType with API response
+                        console.log('Updated Step: ' + currentStep + ', Updated User Type: ' + userType);
                     } else {
                         showValidationError(data.message);
                     }
@@ -267,12 +273,6 @@
         document.querySelector('button[onclick="sendMessage()"]').disabled = false;
         startChat();
     };
-
-    // Initialize chatbot
-    let userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    let currentStep = 0;
-    let userType = '';
-    let isChatComplete = false;
 
     document.getElementById('chatbot-toggle').addEventListener('click', function() {
         const chatbox = document.getElementById('chatbox');
@@ -302,10 +302,12 @@
             if (xhr.readyState === 4) {
                 if (xhr.status === 200) {
                     const data = JSON.parse(xhr.responseText);
+                    console.log('Start response: ', data);
                     if (data.status === 'success') {
                         typeMessage(data.question, 'bot', true);
                         if (data.options) showOptions(data.options);
-                        currentStep = 1; // Start step after initial question
+                        currentStep = 1;
+                        userType = '';
                     } else {
                         showValidationError(data.message || 'Error starting chat.');
                     }
