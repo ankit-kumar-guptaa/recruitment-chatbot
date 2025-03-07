@@ -1,8 +1,14 @@
 <?php
 header('Content-Type: application/json');
 
-// Allow CORS for local and live testing
-header('Access-Control-Allow-Origin: *'); // Update to specific domain in production
+// Allow CORS for live server
+$allowedOrigins = ['https://recruitment-chatbot.greencarpool.com', 'http://localhost'];
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if (in_array($origin, $allowedOrigins)) {
+    header('Access-Control-Allow-Origin: ' . $origin);
+} else {
+    header('Access-Control-Allow-Origin: *'); // Fallback for testing
+}
 header('Access-Control-Allow-Methods: POST');
 header('Access-Control-Allow-Headers: Content-Type');
 
@@ -34,8 +40,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $response = ['status' => 'error', 'message' => 'Message cannot be empty.'];
         } else {
             if (empty($userType)) {
-                if (stripos($message, 'employer') !== false || stripos($message, 'job seeker') !== false) {
-                    $userType = (stripos($message, 'employer') !== false) ? 'employer' : 'job_seeker';
+                $messageLower = strtolower($message);
+                if (strpos($messageLower, 'employer') !== false || strpos($messageLower, 'job seeker') !== false) {
+                    $userType = (strpos($messageLower, 'employer') !== false) ? 'employer' : 'job_seeker';
                     $_SESSION['userType_' . $userId] = $userType;
                     saveUserInput('user_type', $userType, $userId);
                     $currentStep = 1;
@@ -111,7 +118,7 @@ function getColumnForStep($step, $userType) {
             default: return '';
         }
     } elseif ($userType === 'job_seeker') {
-        switch ($step) {
+        switch (step) {
             case 1: return 'name';
             case 2: return 'fresher_experienced';
             case 3: return 'applying_for_job';

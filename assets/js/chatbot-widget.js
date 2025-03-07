@@ -218,7 +218,7 @@
         console.log('Input:', input, 'Step:', currentStep, 'UserType:', userType); // Debug log
 
         if (currentStep === 0) {
-            if (input.includes('employer') || input.includes('job')) { // Lenient check
+            if (input.includes('employer') || input.includes('job seeker')) { // Lenient check
                 userType = input.includes('employer') ? 'employer' : 'job_seeker';
                 typeMessage(input, 'user');
                 document.getElementById('userInput').value = '';
@@ -241,7 +241,7 @@
         document.getElementById('chatbox').scrollTop = document.getElementById('chatbox').scrollHeight;
 
         const xhr = new XMLHttpRequest();
-        xhr.open('POST', 'http://localhost/recruitment-chatbot/api/chatbot_api.php', true);
+        xhr.open('POST', 'https://recruitment-chatbot.greencarpool.com/api/chatbot_api.php', true);
         xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
         xhr.onreadystatechange = function() {
             if (xhr.readyState === 4) {
@@ -317,7 +317,7 @@
 
     function startChat() {
         const xhr = new XMLHttpRequest();
-        xhr.open('POST', 'http://localhost/recruitment-chatbot/api/chatbot_api.php', true);
+        xhr.open('POST', 'https://recruitment-chatbot.greencarpool.com/api/chatbot_api.php', true);
         xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
         xhr.onreadystatechange = function() {
             if (xhr.readyState === 4) {
@@ -341,7 +341,7 @@
 
     function proceedNextStep() {
         const xhr = new XMLHttpRequest();
-        xhr.open('POST', 'http://localhost/recruitment-chatbot/api/chatbot_api.php', true);
+        xhr.open('POST', 'https://recruitment-chatbot.greencarpool.com/api/chatbot_api.php', true);
         xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
         xhr.onreadystatechange = function() {
             if (xhr.readyState === 4) {
