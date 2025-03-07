@@ -1,6 +1,6 @@
 <?php
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Origin: *'); // Allows cross-origin requests
 header('Access-Control-Allow-Methods: POST');
 header('Access-Control-Allow-Headers: Content-Type');
 
@@ -12,7 +12,7 @@ if (!session_id()) {
 
 // Check and include database connection
 if (!file_exists('../includes/db_connect.php')) {
-    error_log("db_connect.php file not found.");
+    error_log("db_connect.php file not found at " . __DIR__ . "/../includes/db_connect.php");
     http_response_code(500);
     echo json_encode(['status' => 'error', 'message' => 'Internal server error: Database configuration missing.']);
     exit();
@@ -26,7 +26,7 @@ try {
 } catch (Exception $e) {
     error_log("Database connection error: " . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['status' => 'error', 'message' => 'Internal server error: Unable to connect to database.']);
+    echo json_encode(['status' => 'error', 'message' => 'Internal server error: Unable to connect to database. Details: ' . $e->getMessage()]);
     exit();
 }
 
@@ -65,7 +65,7 @@ try {
 } catch (PDOException $e) {
     error_log("Table creation error: " . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['status' => 'error', 'message' => 'Internal server error: Unable to create tables.']);
+    echo json_encode(['status' => 'error', 'message' => 'Internal server error: Unable to create tables. Details: ' . $e->getMessage()]);
     exit();
 }
 

@@ -90,7 +90,7 @@
             error: function(xhr, status, error) {
                 $('#loading').addClass('hidden');
                 console.error('AJAX Error:', error, 'Status:', status, 'Response:', xhr.responseText);
-                showValidationError('Error connecting to server. Please try again or contact support at support@example.com.');
+                showValidationError('Error connecting to server. Please try again or contact support at support@example.com. Status: ' + status + ', Response: ' + xhr.responseText);
             }
         });
     };
@@ -154,7 +154,7 @@
             error: function(xhr, status, error) {
                 $('#loading').addClass('hidden');
                 console.error('AJAX Error:', error, 'Status:', status, 'Response:', xhr.responseText);
-                showValidationError('Error connecting to server. Please try again or contact support at support@example.com.');
+                showValidationError('Error connecting to server. Please try again or contact support at support@example.com. Status: ' + status + ', Response: ' + xhr.responseText);
             }
         });
     }
