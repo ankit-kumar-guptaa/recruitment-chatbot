@@ -224,7 +224,7 @@
         document.getElementById('chatbox').scrollTop = document.getElementById('chatbox').scrollHeight;
 
         const xhr = new XMLHttpRequest();
-        xhr.open('POST', 'https://recruitment-chatbot.greencarcarpool.com/api/chatbot_api.php', true);
+        xhr.open('POST', 'http://localhost/recruitment-chatbot/api/chatbot_api.php', true);
         xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
         xhr.onreadystatechange = function() {
             if (xhr.readyState === 4) {
@@ -244,7 +244,7 @@
                         showValidationError(data.message);
                     }
                 } else {
-                    showValidationError('Error connecting to server.');
+                    showValidationError('Error connecting to server. Status: ' + xhr.status);
                 }
             }
         };
@@ -292,7 +292,7 @@
 
     function startChat() {
         const xhr = new XMLHttpRequest();
-        xhr.open('POST', 'https://recruitment-chatbot.greencarcarpool.com/api/chatbot_api.php', true);
+        xhr.open('POST', 'http://localhost/recruitment-chatbot/api/chatbot_api.php', true);
         xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
         xhr.onreadystatechange = function() {
             if (xhr.readyState === 4) {
@@ -306,7 +306,7 @@
                         showValidationError(data.message || 'Error starting chat.');
                     }
                 } else {
-                    showValidationError('Error connecting to server.');
+                    showValidationError('Error connecting to server. Status: ' + xhr.status);
                 }
             }
         };

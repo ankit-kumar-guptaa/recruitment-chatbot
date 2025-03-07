@@ -1,41 +1,21 @@
 <?php
 header('Content-Type: application/json');
 
-// Restrict CORS to your domain for security
-header('Access-Control-Allow-Origin: https://recruitment-chatbot.greencarcarpool.com');
+// Allow CORS for local and live testing
+header('Access-Control-Allow-Origin: *'); // Update to specific domain in production
 header('Access-Control-Allow-Methods: POST');
 header('Access-Control-Allow-Headers: Content-Type');
 
-// Start session with secure settings
-session_start([
-    'cookie_secure' => true, // Only send session cookie over HTTPS
-    'cookie_httponly' => true, // Prevent JavaScript access to session cookie
-    'use_strict_mode' => true // Prevent session fixation
-]);
+session_start();
 
-// Include database connection
-include '../includes/db_connect.php';
-
-// CSRF Token validation
-if (!isset($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-}
-
-// Log requests for debugging (remove in production if not needed)
-error_log("Received API request: " . print_r($_POST, true));
+error_log("Received API request: " . print_r($_POST, true)); // Debug log
 
 $response = ['status' => 'error', 'message' => 'Invalid request'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Sanitize inputs to prevent XSS
-    $action = filter_input(INPUT_POST, 'action', FILTER_SANITIZE_STRING);
-    $userId = filter_input(INPUT_POST, 'userId', FILTER_SANITIZE_STRING);
-    $message = filter_input(INPUT_POST, 'message', FILTER_SANITIZE_STRING);
-
-    // Validate userId
-    if (!$userId || !preg_match('/^user_[0-9]+_[a-z0-9]+$/', $userId)) {
-        $userId = 'user_' . time() . '_' . bin2hex(random_bytes(8));
-    }
+    $action = $_POST['action'] ?? '';
+    $userId = $_POST['userId'] ?? 'user_' . time() . '_' . rand(1000, 9999);
+    $message = $_POST['message'] ?? '';
 
     $userType = $_SESSION['userType_' . $userId] ?? '';
     $currentStep = $_SESSION['currentStep_' . $userId] ?? 0;
@@ -86,27 +66,35 @@ function saveUserInput($column, $value, $userId) {
     global $conn;
     $table = ($_SESSION['userType_' . $userId] == 'employer') ? 'employer_enquiries' : 'job_seeker_enquiries';
 
-    $conn->beginTransaction();
-    $checkStmt = $conn->prepare("SELECT COUNT(*) FROM $table WHERE user_id = ?");
-    $checkStmt->execute([$userId]);
-    $exists = $checkStmt->fetchColumn();
+    try {
+        $conn->beginTransaction();
+        $checkStmt = $conn->prepare("SELECT COUNT(*) FROM $table WHERE user_id = ?");
+        $checkStmt->execute([$userId]);
+        $exists = $checkStmt->fetchColumn();
 
-    if ($exists) {
-        $updateQuery = "UPDATE $table SET $column = ?, created_at = NOW() WHERE user_id = ?";
-        $stmt = $conn->prepare($updateQuery);
-        $stmt->execute([$value, $userId]);
-    } else {
-        if ($column === 'user_type') {
-            $insertQuery = "INSERT INTO $table (user_id, user_type, created_at) VALUES (?, ?, NOW())";
-            $stmt = $conn->prepare($insertQuery);
-            $stmt->execute([$userId, $value]);
-        } else {
-            $insertQuery = "INSERT INTO $table ($column, user_id, created_at) VALUES (?, ?, NOW())";
-            $stmt = $conn->prepare($insertQuery);
+        if ($exists) {
+            $updateQuery = "UPDATE $table SET $column = ?, created_at = NOW() WHERE user_id = ?";
+            $stmt = $conn->prepare($updateQuery);
             $stmt->execute([$value, $userId]);
+        } else {
+            if ($column === 'user_type') {
+                $insertQuery = "INSERT INTO $table (user_id, user_type, created_at) VALUES (?, ?, NOW())";
+                $stmt = $conn->prepare($insertQuery);
+                $stmt->execute([$userId, $value]);
+            } else {
+                $insertQuery = "INSERT INTO $table ($column, user_id, created_at) VALUES (?, ?, NOW())";
+                $stmt = $conn->prepare($insertQuery);
+                $stmt->execute([$value, $userId]);
+            }
         }
+        $conn->commit();
+    } catch (PDOException $e) {
+        $conn->rollBack();
+        error_log("Database error: " . $e->getMessage());
+        $response = ['status' => 'error', 'message' => 'Database error. Please try again.'];
+        echo json_encode($response);
+        exit();
     }
-    $conn->commit();
 }
 
 function getColumnForStep($step, $userType) {
