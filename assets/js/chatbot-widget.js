@@ -220,6 +220,12 @@
         let input = document.getElementById('userInput').value.trim();
         console.log('Sending message: ' + input + ', Current Step: ' + currentStep + ', User Type: ' + userType);
         const column = getColumnForStep(currentStep, userType);
+
+        // Re-enable input after the first selection
+        if (currentStep === 0 && input) {
+            document.getElementById('userInput').disabled = false;
+        }
+
         if (!validateInput(input, column)) {
             showValidationError(getValidationMessage(column, input));
             return;
@@ -250,6 +256,10 @@
                         currentStep = data.step || currentStep + 1;
                         userType = data.userType || userType; // Sync userType with API response
                         console.log('Updated Step: ' + currentStep + ', Updated User Type: ' + userType);
+                        // Re-enable input after userType is set
+                        if (data.userType) {
+                            document.getElementById('userInput').disabled = false;
+                        }
                     } else {
                         showValidationError(data.message);
                     }
@@ -305,8 +315,12 @@
                     console.log('Start response: ', data);
                     if (data.status === 'success') {
                         typeMessage(data.question, 'bot', true);
-                        if (data.options) showOptions(data.options);
-                        currentStep = 1;
+                        if (data.options) {
+                            showOptions(data.options);
+                            // Disable free input until an option is selected
+                            document.getElementById('userInput').disabled = true;
+                        }
+                        currentStep = 1; // Step 1 starts after userType is set
                         userType = '';
                     } else {
                         showValidationError(data.message || 'Error starting chat.');

@@ -68,20 +68,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if (empty($userType)) {
+            // Initial step: Expecting "Employer" or "Job Seeker"
             $normalizedMessage = strtolower($message);
-            if (strpos($normalizedMessage, 'employer') !== false || strpos($normalizedMessage, 'job seeker') !== false) {
-                $userType = (strpos($normalizedMessage, 'employer') !== false) ? 'employer' : 'job_seeker';
+            if (strpos($normalizedMessage, 'employer') !== false) {
+                $userType = 'employer';
                 $_SESSION['userType_' . $userId] = $userType;
                 saveUserInput('user_type', $userType, $userId);
                 $currentStep = 1;
                 $_SESSION['currentStep_' . $userId] = $currentStep;
                 $response = getNextResponse($userType, $currentStep, $userId);
-                $response['step'] = $currentStep;
-                $response['userType'] = $userType;
+            } elseif (strpos($normalizedMessage, 'job seeker') !== false) {
+                $userType = 'job_seeker';
+                $_SESSION['userType_' . $userId] = $userType;
+                saveUserInput('user_type', $userType, $userId);
+                $currentStep = 1;
+                $_SESSION['currentStep_' . $userId] = $currentStep;
+                $response = getNextResponse($userType, $currentStep, $userId);
             } else {
                 $response = ['status' => 'error', 'message' => 'Please select "Employer" or "Job Seeker".'];
             }
         } else {
+            // Proceed with the conversation based on the current step
             $column = getColumnForStep($currentStep, $userType);
             if ($column && validateInput($message, $column)) {
                 saveUserInput($column, $message, $userId);
@@ -94,6 +101,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $response = ['status' => 'error', 'message' => 'Invalid input. ' . getValidationMessage($column, $message)];
             }
         }
+        $response['step'] = $currentStep;
+        $response['userType'] = $userType;
     } else {
         $response = ['status' => 'error', 'message' => 'Invalid action: ' . $action];
     }
