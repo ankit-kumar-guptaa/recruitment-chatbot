@@ -1,211 +1,30 @@
 (function() {
-    // Enhanced CSS with modern design and animations
-    const style = document.createElement('style');
-    style.innerHTML = `
-        #chatbot-toggle {
-            z-index: 1000;
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(135deg, #4a90e2, #50e3c2);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            box-shadow: 0 6px 20px rgba(74, 144, 226, 0.4);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-        #chatbot-toggle:hover {
-            transform: scale(1.1);
-            box-shadow: 0 8px 25px rgba(74, 144, 226, 0.6);
-        }
-        #chatbot-toggle i {
-            color: #fff;
-            font-size: 24px;
-        }
-        #chatbox {
-            z-index: 1000;
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            width: 0;
-            height: 0;
-            background: #fff;
-            border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-            display: none;
-            transition: all 0.4s ease-out;
-        }
-        #chatbox.open {
-            width: 380px;
-            height: 520px;
-            display: flex;
-            flex-direction: column;
-            animation: slideIn 0.4s ease-out;
-        }
-        @keyframes slideIn {
-            from { transform: translateY(20px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-        #messages {
-            padding: 20px;
-            flex-grow: 1;
-            overflow-y: auto;
-            background: linear-gradient(135deg, #f5f7fa, #e0eaff);
-            border-top-left-radius: 15px;
-            border-top-right-radius: 15px;
-        }
-        .message {
-            margin: 12px 0;
-            padding: 15px 20px;
-            border-radius: 20px;
-            line-height: 1.5;
-            max-width: 80%;
-            word-wrap: break-word;
-            animation: fadeIn 0.3s ease-in;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .bot-message {
-            background: #e6f3ff;
-            align-self: flex-start;
-            border-left: 5px solid #4a90e2;
-        }
-        .user-message {
-            background: #ffebee;
-            color: #333;
-            align-self: flex-end;
-            border-right: 5px solid #f44336;
-        }
-        .option-btn {
-            background: #fff3e0;
-            border: none;
-            padding: 10px 18px;
-            margin: 5px;
-            border-radius: 25px;
-            cursor: pointer;
-            transition: background-color 0.3s, transform 0.2s;
-            font-size: 14px;
-            border: 2px solid #ff9800;
-            color: #ff5722;
-        }
-        .option-btn:hover {
-            background: #ffe0b2;
-            transform: scale(1.05);
-        }
-        #chatbox input {
-            width: 70%;
-            padding: 15px;
-            border: none;
-            border-top: 1px solid #ddd;
-            border-bottom-left-radius: 15px;
-            outline: none;
-            font-size: 14px;
-            background: #f8f9fa;
-            transition: background 0.3s;
-        }
-        #chatbox input:focus {
-            background: #fff;
-        }
-        #chatbox button {
-            width: 30%;
-            background: linear-gradient(135deg, #4a90e2, #50e3c2);
-            color: white;
-            border: none;
-            padding: 15px;
-            border-bottom-right-radius: 15px;
-            cursor: pointer;
-            transition: background 0.3s, transform 0.2s;
-            font-size: 14px;
-        }
-        #chatbox button:hover {
-            background: linear-gradient(135deg, #357abd, #38d9a9);
-            transform: scale(1.05);
-        }
-        #validationError {
-            color: #d32f2f;
-            font-size: 12px;
-            padding: 10px;
-            display: none;
-            background: #ffebee;
-            border-radius: 10px;
-            text-align: center;
-            animation: shake 0.5s;
-        }
-        @keyframes shake {
-            0% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            50% { transform: translateX(5px); }
-            75% { transform: translateX(-5px); }
-            100% { transform: translateX(0); }
-        }
-        #clearBtn {
-            width: 100%;
-            background: linear-gradient(135deg, #d32f2f, #b71c1c);
-            color: white;
-            border: none;
-            padding: 15px;
-            border-bottom-left-radius: 15px;
-            border-bottom-right-radius: 15px;
-            cursor: pointer;
-            transition: background 0.3s, transform 0.2s;
-            font-size: 14px;
-        }
-        #clearBtn:hover {
-            background: linear-gradient(135deg, #ef5350, #c62828);
-            transform: scale(1.02);
-        }
-        #ai-label {
-            position: fixed;
-            bottom: 15px;
-            right: 100px;
-            font-size: 12px;
-            color: #424242;
-            background: rgba(255, 255, 255, 0.95);
-            padding: 8px 12px;
-            border-radius: 15px;
-            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
-            z-index: 1000;
-            font-weight: bold;
-        }
-        #loading {
-            display: none;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: #4a90e2;
-        }
-        #loading.show {
-            display: block;
-        }
-    `;
-    document.head.appendChild(style);
-
     // Create Chatbot UI
     const chatbotButton = document.createElement('div');
     chatbotButton.id = 'chatbot-toggle';
-    chatbotButton.innerHTML = '<i class="fas fa-comment"></i>';
+    chatbotButton.className = 'fixed bottom-6 right-6 w-16 h-16 bg-gradient-to-r from-blue-500 to-teal-400 rounded-full flex items-center justify-center cursor-pointer shadow-lg hover:scale-105 transition-transform duration-300 text-white font-bold';
+    chatbotButton.textContent = 'Chat';
     document.body.appendChild(chatbotButton);
 
     const chatbox = document.createElement('div');
     chatbox.id = 'chatbox';
+    chatbox.className = 'fixed bottom-6 right-6 w-0 h-0 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden hidden flex-col transition-all duration-500';
     chatbox.innerHTML = `
-        <div id="messages"></div>
-        <div style="display: flex; align-items: center; border-top: 1px solid #ddd;">
-            <input type="text" id="userInput" placeholder="Type your message or select an option...">
-            <button onclick="sendMessage()">Send</button>
+        <div id="chat-header" class="flex items-center justify-between p-4 bg-gradient-to-r from-blue-500 to-teal-400 text-white rounded-t-2xl">
+            <h2 class="text-lg font-semibold">AI Recruit Chatbot</h2>
+            <button id="theme-toggle" class="text-xl">
+                <span class="dark:hidden">🌙</span><span class="hidden dark:inline">☀️</span>
+            </button>
         </div>
-        <div id="validationError"></div>
-        <button id="clearBtn" onclick="clearChat()">Clear</button>
-        <div id="loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
-        <div id="ai-label">Powered by AI Recruit AI</div>
+        <div id="messages" class="flex-1 p-5 overflow-y-auto bg-gray-50 dark:bg-gray-900"></div>
+        <div class="flex items-center border-t border-gray-200 dark:border-gray-700">
+            <input type="text" id="userInput" class="flex-1 p-4 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 outline-none" placeholder="Type your message or select an option...">
+            <button onclick="sendMessage()" class="w-24 p-4 bg-gradient-to-r from-blue-500 to-teal-400 text-white font-semibold hover:from-blue-600 hover:to-teal-500 transition-colors duration-300">Send</button>
+        </div>
+        <div id="validationError" class="hidden p-3 text-red-600 bg-red-100 dark:bg-red-200 dark:text-red-800 text-center text-sm"></div>
+        <button id="clearBtn" onclick="clearChat()" class="p-3 bg-red-500 text-white font-semibold hover:bg-red-600 transition-colors duration-300 rounded-b-2xl">Clear Chat</button>
+        <div id="loading" class="hidden absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-blue-500">Loading...</div>
+        <div id="ai-label" class="fixed bottom-4 right-28 text-sm text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-4 py-2 rounded-full shadow-md">Powered by AI Recruit AI</div>
     `;
     document.body.appendChild(chatbox);
 
@@ -214,6 +33,18 @@
     let currentStep = 0;
     let userType = '';
     let isChatComplete = false;
+
+    // Theme toggle
+    $('#theme-toggle').on('click', function() {
+        $('body').toggleClass('dark');
+        localStorage.setItem('theme', $('body').hasClass('dark') ? 'dark' : 'light');
+        $(this).html($('body').hasClass('dark') ? '☀️' : '🌙');
+    });
+
+    if (localStorage.getItem('theme') === 'dark') {
+        $('body').addClass('dark');
+        $('#theme-toggle').html('☀️');
+    }
 
     window.sendMessage = function() {
         if (isChatComplete) {
@@ -227,11 +58,11 @@
             return;
         }
 
-        $('#messages').append(`<div class="message user-message">${input}</div>`);
+        $('#messages').append(`<div class="message user-message ml-auto max-w-[80%] bg-red-100 dark:bg-red-200 text-gray-800 dark:text-gray-900 p-3 rounded-2xl mb-3 shadow-md">${input}</div>`);
         $('#userInput').val('');
         $('#chatbox').scrollTop($('#chatbox')[0].scrollHeight);
         hideValidationError();
-        $('#loading').addClass('show');
+        $('#loading').removeClass('hidden');
 
         $.ajax({
             url: 'https://recruitment-chatbot.greencarcarpool.com/api/chatbot_api.php',
@@ -239,7 +70,7 @@
             data: { action: 'send', userId: userId, message: input },
             dataType: 'json',
             success: function(data) {
-                $('#loading').removeClass('show');
+                $('#loading').addClass('hidden');
                 if (data.status === 'success') {
                     if (data.question) typeMessage(data.question);
                     if (data.options) showOptions(data.options);
@@ -257,7 +88,7 @@
                 }
             },
             error: function(xhr, status, error) {
-                $('#loading').removeClass('show');
+                $('#loading').addClass('hidden');
                 console.error('AJAX Error:', error, 'Status:', status, 'Response:', xhr.responseText);
                 showValidationError('Error connecting to server. Please try again or contact support at support@example.com.');
             }
@@ -266,13 +97,13 @@
 
     window.clearChat = function() {
         $('#messages').empty();
-        $('#loading').removeClass('show');
+        $('#loading').addClass('hidden');
         userType = '';
         userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
         currentStep = 0;
         isChatComplete = false;
         $('#userInput').prop('disabled', false).attr('placeholder', 'Type your message or select an option...');
-        $('button[onclick="sendMessage()"]').prop('disabled', false).removeClass('opacity-50 cursor-not-allowed').addClass('hover:scale-105');
+        $('button[onclick="sendMessage()"]').prop('disabled', false).removeClass('opacity-50 cursor-not-allowed');
         startChat();
     };
 
@@ -280,10 +111,14 @@
         const chatbox = document.getElementById('chatbox');
         if (chatbox.classList.contains('open')) {
             chatbox.classList.remove('open');
-            chatbox.style.display = 'none';
+            chatbox.classList.add('hidden');
+            chatbox.style.width = '0';
+            chatbox.style.height = '0';
         } else {
             chatbox.classList.add('open');
-            chatbox.style.display = 'flex';
+            chatbox.classList.remove('hidden');
+            chatbox.style.width = '380px';
+            chatbox.style.height = '520px';
             if (currentStep === 0) startChat();
         }
     });
@@ -292,19 +127,21 @@
         const chatbox = document.getElementById('chatbox');
         if (!chatbox.contains(event.target) && event.target.id !== 'chatbot-toggle') {
             chatbox.classList.remove('open');
-            chatbox.style.display = 'none';
+            chatbox.classList.add('hidden');
+            chatbox.style.width = '0';
+            chatbox.style.height = '0';
         }
     });
 
     function startChat() {
-        $('#loading').addClass('show');
+        $('#loading').removeClass('hidden');
         $.ajax({
             url: 'https://recruitment-chatbot.greencarcarpool.com/api/chatbot_api.php',
             type: 'POST',
             data: { action: 'start', userId: userId },
             dataType: 'json',
             success: function(data) {
-                $('#loading').removeClass('show');
+                $('#loading').addClass('hidden');
                 if (data.status === 'success') {
                     typeMessage(data.question);
                     if (data.options) showOptions(data.options);
@@ -315,7 +152,7 @@
                 }
             },
             error: function(xhr, status, error) {
-                $('#loading').removeClass('show');
+                $('#loading').addClass('hidden');
                 console.error('AJAX Error:', error, 'Status:', status, 'Response:', xhr.responseText);
                 showValidationError('Error connecting to server. Please try again or contact support at support@example.com.');
             }
@@ -328,15 +165,17 @@
     };
 
     function showOptions(options) {
-        let $options = $('#messages').append('<div class="flex flex-wrap mt-4"></div>');
+        let optionsHtml = '<div class="flex flex-wrap mt-3">';
         options.forEach(option => {
-            $options.append(`<button class="option-btn mr-2 mb-2" onclick="selectOption('${option}')">${option}</button>`);
+            optionsHtml += `<button class="option-btn mr-2 mb-2 px-4 py-2 bg-orange-100 dark:bg-orange-200 text-orange-700 dark:text-orange-800 rounded-full border-2 border-orange-500 hover:bg-orange-200 dark:hover:bg-orange-300 transition-all duration-300" onclick="selectOption('${option}')">${option}</button>`;
         });
+        optionsHtml += '</div>';
+        $('#messages').append(optionsHtml);
         $('#chatbox').scrollTop($('#chatbox')[0].scrollHeight);
     }
 
     function typeMessage(text) {
-        let $message = $('<div class="message bot-message"></div>');
+        let $message = $('<div class="message bot-message max-w-[80%] bg-blue-100 dark:bg-blue-200 text-gray-800 dark:text-gray-900 p-3 rounded-2xl mb-3 shadow-md"></div>');
         $('#messages').append($message);
         let index = 0;
         let typingInterval = setInterval(() => {
@@ -351,17 +190,17 @@
     }
 
     function showValidationError(message) {
-        $('#validationError').text(message).removeClass('hidden').addClass('show');
+        $('#validationError').text(message).removeClass('hidden');
         setTimeout(hideValidationError, 3000);
     }
 
     function hideValidationError() {
-        $('#validationError').addClass('hidden').removeClass('show');
+        $('#validationError').addClass('hidden');
     }
 
     function disableChatInput() {
         $('#userInput').prop('disabled', true).attr('placeholder', 'Chat completed. Clear to start anew.');
-        $('button[onclick="sendMessage()"]').prop('disabled', true).addClass('opacity-50 cursor-not-allowed').removeClass('hover:scale-105');
+        $('button[onclick="sendMessage()"]').prop('disabled', true).addClass('opacity-50 cursor-not-allowed');
         isChatComplete = true;
     }
 

@@ -10,7 +10,64 @@ if (!session_id()) {
     session_start();
 }
 
-include '../includes/db_connect.php';
+// Check and include database connection
+if (!file_exists('../includes/db_connect.php')) {
+    error_log("db_connect.php file not found.");
+    http_response_code(500);
+    echo json_encode(['status' => 'error', 'message' => 'Internal server error: Database configuration missing.']);
+    exit();
+}
+
+try {
+    include '../includes/db_connect.php';
+    if (!$conn) {
+        throw new Exception("Database connection failed.");
+    }
+} catch (Exception $e) {
+    error_log("Database connection error: " . $e->getMessage());
+    http_response_code(500);
+    echo json_encode(['status' => 'error', 'message' => 'Internal server error: Unable to connect to database.']);
+    exit();
+}
+
+// Create tables if they don't exist
+try {
+    $conn->exec("CREATE TABLE IF NOT EXISTS employer_enquiries (
+        user_id VARCHAR(50) PRIMARY KEY,
+        user_type VARCHAR(20),
+        name VARCHAR(100),
+        organisation_name VARCHAR(100),
+        city_state VARCHAR(100),
+        position VARCHAR(100),
+        hiring_count INT,
+        requirements TEXT,
+        email VARCHAR(100),
+        phone VARCHAR(15),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )");
+    $conn->exec("CREATE TABLE IF NOT EXISTS job_seeker_enquiries (
+        user_id VARCHAR(50) PRIMARY KEY,
+        user_type VARCHAR(20),
+        name VARCHAR(100),
+        fresher_experienced VARCHAR(20),
+        applying_for_job VARCHAR(3),
+        position VARCHAR(100),
+        experience_years INT,
+        skills_degree TEXT,
+        location_preference VARCHAR(100),
+        email VARCHAR(100),
+        phone VARCHAR(15),
+        comments TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )");
+} catch (PDOException $e) {
+    error_log("Table creation error: " . $e->getMessage());
+    http_response_code(500);
+    echo json_encode(['status' => 'error', 'message' => 'Internal server error: Unable to create tables.']);
+    exit();
+}
 
 error_log("Received API request: " . print_r($_POST, true));
 error_log("Session data before processing: " . print_r($_SESSION, true));
@@ -110,7 +167,9 @@ function saveUserInput($column, $value, $userId) {
     } catch (PDOException $e) {
         $conn->rollBack();
         error_log("Database save error: " . $e->getMessage());
-        throw $e;
+        http_response_code(500);
+        echo json_encode(['status' => 'error', 'message' => 'Internal server error: ' . $e->getMessage()]);
+        exit();
     }
 }
 
