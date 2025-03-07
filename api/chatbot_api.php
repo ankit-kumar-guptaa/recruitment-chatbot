@@ -4,7 +4,6 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST');
 header('Access-Control-Allow-Headers: Content-Type');
 
-// Ensure session is started properly
 session_start();
 if (!session_id()) {
     error_log("Session not started properly.");
@@ -13,34 +12,20 @@ if (!session_id()) {
 
 include '../includes/db_connect.php';
 
-// Debug: Log the incoming request and session
 error_log("Received API request: " . print_r($_POST, true));
 error_log("Session data before processing: " . print_r($_SESSION, true));
 
 $response = ['status' => 'error', 'message' => 'Invalid request'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (empty($_POST)) {
-        $response = ['status' => 'error', 'message' => 'No POST data received.'];
-        echo json_encode($response);
-        exit();
-    }
-
     $action = $_POST['action'] ?? '';
     $userId = $_POST['userId'] ?? 'user_' . time() . '_' . rand(1000, 9999);
-    
-    // Ensure session variables are initialized
-    if (!isset($_SESSION['userType_' . $userId])) {
-        $_SESSION['userType_' . $userId] = '';
-    }
-    if (!isset($_SESSION['currentStep_' . $userId])) {
-        $_SESSION['currentStep_' . $userId] = 0;
-    }
+
+    if (!isset($_SESSION['userType_' . $userId])) $_SESSION['userType_' . $userId] = '';
+    if (!isset($_SESSION['currentStep_' . $userId])) $_SESSION['currentStep_' . $userId] = 0;
 
     $userType = $_SESSION['userType_' . $userId];
     $currentStep = $_SESSION['currentStep_' . $userId];
-
-    error_log("Action: " . $action . ", UserType: " . $userType . ", CurrentStep: " . $currentStep);
 
     if (empty($action)) {
         $response = ['status' => 'error', 'message' => 'Action parameter is missing.'];
@@ -49,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'start') {
-        $_SESSION['userType_' . $userId] = ''; // Reset userType on start
+        $_SESSION['userType_' . $userId] = '';
         $_SESSION['currentStep_' . $userId] = 0;
         $response = [
             'status' => 'success',
@@ -59,8 +44,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ];
     } elseif ($action === 'send') {
         $message = trim($_POST['message'] ?? '');
-        error_log("Message received: " . $message);
-
         if (empty($message)) {
             $response = ['status' => 'error', 'message' => 'Message parameter is missing.'];
             echo json_encode($response);
@@ -68,17 +51,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if (empty($userType)) {
-            // Initial step: Expecting "Employer" or "Job Seeker"
             $normalizedMessage = strtolower($message);
-            if (strpos($normalizedMessage, 'employer') !== false) {
-                $userType = 'employer';
-                $_SESSION['userType_' . $userId] = $userType;
-                saveUserInput('user_type', $userType, $userId);
-                $currentStep = 1;
-                $_SESSION['currentStep_' . $userId] = $currentStep;
-                $response = getNextResponse($userType, $currentStep, $userId);
-            } elseif (strpos($normalizedMessage, 'job seeker') !== false) {
-                $userType = 'job_seeker';
+            if ($normalizedMessage === 'employer' || $normalizedMessage === 'job seeker') {
+                $userType = $normalizedMessage;
                 $_SESSION['userType_' . $userId] = $userType;
                 saveUserInput('user_type', $userType, $userId);
                 $currentStep = 1;
@@ -88,26 +63,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $response = ['status' => 'error', 'message' => 'Please select "Employer" or "Job Seeker".'];
             }
         } else {
-            // Proceed with the conversation based on the current step
             $column = getColumnForStep($currentStep, $userType);
             if ($column && validateInput($message, $column)) {
                 saveUserInput($column, $message, $userId);
                 $currentStep++;
                 $_SESSION['currentStep_' . $userId] = $currentStep;
                 $response = getNextResponse($userType, $currentStep, $userId);
-                $response['step'] = $currentStep;
-                $response['userType'] = $userType;
+                if ($response['question'] === '' && ($currentStep === 9 && $userType === 'employer' || $currentStep === 11 && $userType === 'job_seeker')) {
+                    $response['complete'] = true;
+                }
             } else {
                 $response = ['status' => 'error', 'message' => 'Invalid input. ' . getValidationMessage($column, $message)];
             }
         }
         $response['step'] = $currentStep;
         $response['userType'] = $userType;
-    } else {
-        $response = ['status' => 'error', 'message' => 'Invalid action: ' . $action];
     }
-} else {
-    $response = ['status' => 'error', 'message' => 'Invalid request method. Use POST.'];
 }
 
 error_log("Session data after processing: " . print_r($_SESSION, true));
@@ -116,7 +87,7 @@ exit();
 
 function saveUserInput($column, $value, $userId) {
     global $conn;
-    $table = ($_SESSION['userType_' . $userId] == 'employer') ? 'employer_enquiries' : 'job_seeker_enquiries';
+    $table = ($_SESSION['userType_' . $userId] === 'employer') ? 'employer_enquiries' : 'job_seeker_enquiries';
 
     try {
         $conn->beginTransaction();
@@ -125,15 +96,15 @@ function saveUserInput($column, $value, $userId) {
         $exists = $checkStmt->fetchColumn();
 
         if ($exists) {
-            $updateQuery = "UPDATE $table SET $column = ?, created_at = NOW() WHERE user_id = ?";
+            $updateQuery = "UPDATE $table SET $column = ?, updated_at = NOW() WHERE user_id = ?";
             $stmt = $conn->prepare($updateQuery);
             $stmt->execute([$value, $userId]);
         } else {
-            $columns = ($column === 'user_type') ? 'user_id, user_type, created_at' : "$column, user_id, created_at";
+            $columns = ($column === 'user_type') ? 'user_id, user_type, created_at' : "user_id, $column, created_at";
             $values = ($column === 'user_type') ? "?, ?, NOW()" : "?, ?, NOW()";
             $insertQuery = "INSERT INTO $table ($columns) VALUES ($values)";
             $stmt = $conn->prepare($insertQuery);
-            $stmt->execute([$value, $userId]);
+            $stmt->execute([$userId, $value]);
         }
         $conn->commit();
     } catch (PDOException $e) {
@@ -196,7 +167,7 @@ function getNextResponse($userType, $step, $userId) {
             8 => "Please provide your email address (e.g., ankit2@email.com).",
             9 => "Please provide your phone number.",
             10 => "Any other comments?",
-            11 => "Thank you for sharing your details! We have saved your information and will connect with you soon."
+            11 => "Thank you for sharing your details! We have saved your information and will connect with you soon. Please note that we place candidates based on company requirements—we do not create job openings."
         ]
     ];
 
@@ -211,15 +182,8 @@ function getNextResponse($userType, $step, $userId) {
             'options' => $options,
             'step' => $step
         ];
-    } elseif ($step === 9 && $userType === 'employer' || $step === 11 && $userType === 'job_seeker') {
-        return [
-            'status' => 'success',
-            'question' => $question,
-            'options' => [],
-            'complete' => true
-        ];
     }
-    return ['status' => 'error', 'message' => 'Conversation ended'];
+    return ['status' => 'success', 'question' => '', 'options' => [], 'step' => $step];
 }
 
 function validateInput($value, $column) {
