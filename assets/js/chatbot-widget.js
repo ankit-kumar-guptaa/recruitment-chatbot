@@ -204,6 +204,7 @@
     window.selectOption = function(option) {
         document.getElementById('userInput').value = option;
         sendMessage(); // Auto send on option click
+        console.log('Selected option:', option); // Debug log
     };
 
     window.sendMessage = function() {
@@ -214,9 +215,11 @@
 
         let input = document.getElementById('userInput').value.trim().toLowerCase();
         const column = getColumnForStep(currentStep, userType);
+        console.log('Input:', input, 'Step:', currentStep, 'UserType:', userType); // Debug log
+
         if (currentStep === 0) {
-            if (input === 'employer' || input === 'job seeker') {
-                userType = (input === 'employer') ? 'employer' : 'job_seeker';
+            if (input.includes('employer') || input.includes('job')) { // Lenient check
+                userType = input.includes('employer') ? 'employer' : 'job_seeker';
                 typeMessage(input, 'user');
                 document.getElementById('userInput').value = '';
                 document.getElementById('chatbox').scrollTop = document.getElementById('chatbox').scrollHeight;
@@ -242,6 +245,7 @@
         xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
         xhr.onreadystatechange = function() {
             if (xhr.readyState === 4) {
+                console.log('API Response:', xhr.responseText); // Debug API response
                 if (xhr.status === 200) {
                     const data = JSON.parse(xhr.responseText);
                     if (data.status === 'success') {
@@ -317,6 +321,7 @@
         xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
         xhr.onreadystatechange = function() {
             if (xhr.readyState === 4) {
+                console.log('Start API Response:', xhr.responseText); // Debug start response
                 if (xhr.status === 200) {
                     const data = JSON.parse(xhr.responseText);
                     if (data.status === 'success') {
@@ -340,6 +345,7 @@
         xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
         xhr.onreadystatechange = function() {
             if (xhr.readyState === 4) {
+                console.log('Proceed API Response:', xhr.responseText); // Debug proceed response
                 if (xhr.status === 200) {
                     const data = JSON.parse(xhr.responseText);
                     if (data.status === 'success') {
