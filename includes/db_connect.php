@@ -1,15 +1,15 @@
 <?php
 // Database configuration for live server
-$servername = "localhost"; // Live server ka host, agar alag hai to change karna (e.g., 'mysql.greencarcarpool.com')
-$username = "u141142577_chatbot"; // Live database username
-$password = "Chatbot@1925@"; // Live database password
-$dbname = "u141142577_chatbot"; // Live database name
+// $servername = "localhost"; // Live server ka host, agar alag hai to change karna (e.g., 'mysql.greencarcarpool.com')
+// $username = "u141142577_chatbot"; // Live database username
+// $password = "Chatbot@1925@"; // Live database password
+// $dbname = "u141142577_chatbot"; // Live database name
 
 
-// $servername = "localhost";
-// $username = "root"; // Apna DB username (e.g., "root")
-// $password = ""; // Apna DB password (e.g., "" for XAMPP)
-// $dbname = "recruitment_chatbot";
+$servername = "localhost";
+$username = "root"; // Apna DB username (e.g., "root")
+$password = ""; // Apna DB password (e.g., "" for XAMPP)
+$dbname = "recruitment_chatbot";
 
 // Connection options with retry mechanism
 $maxRetries = 3;

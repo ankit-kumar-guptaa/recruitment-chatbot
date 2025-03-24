@@ -7,7 +7,10 @@ include 'includes/db_connect.php';
 
 session_start();
 
-// Set content type to JSON explicitly
+// Add CORS headers (optional, if used by other domains)
+header('Access-Control-Allow-Origin: *'); // Ya specific domain daal do
+header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
 header('Content-Type: application/json');
 
 // Debug incoming POST data
@@ -50,7 +53,7 @@ try {
 
         // Prepare the update/insert query
         if ($exists) {
-            // Update existing row with timestamp update (fixed SET clause)
+            // Update existing row with timestamp update
             $updateQuery = "UPDATE $table SET $column = ?, created_at = NOW() WHERE user_id = ?";
             $stmt = $conn->prepare($updateQuery);
             $stmt->execute([$value, $userId]);
@@ -88,7 +91,7 @@ try {
             elseif ($column === 'fresher_experienced') $nextStep = 3;
             elseif ($column === 'applying_for_job') $nextStep = 4;
             elseif ($column === 'position') $nextStep = 5;
-            elseif ($column === 'experience_years' || $column === 'skills_degree') $nextStep = 6; // Handle conditional step for Fresher/Experienced
+            elseif ($column === 'experience_years' || $column === 'skills_degree') $nextStep = 6;
             elseif ($column === 'skills_degree') $nextStep = 7;
             elseif ($column === 'location_preference') $nextStep = 8;
             elseif ($column === 'email') $nextStep = 9;
@@ -98,11 +101,9 @@ try {
 
         echo json_encode(['success' => true, 'message' => 'User input saved successfully', 'nextStep' => $nextStep]);
     } else {
-        // No question logic here, just return success for chat flow
         echo json_encode(['success' => true, 'nextStep' => $currentStep + 1]);
     }
 } catch (Exception $e) {
-    // Catch any PHP errors and return as JSON
     error_log("PHP Error: " . $e->getMessage());
     echo json_encode(['error' => 'Server error: ' . $e->getMessage() . ' Please try again or contact support at support@example.com.']);
 }
