@@ -158,7 +158,7 @@ function initChatbot() {
             } else if (filledFields === 8) {
                 typeMessage("Please provide your phone number.");
             } else if (filledFields === 9) {
-                typeMessage("Thanks for the details! Our Sales Team will connect with you soon. Please call us at 9871916980 for urgent discussion.");
+                typeMessage("Thanks for the details! Our Sales Team will connect with you soon.");
                 setTimeout(() => {
                     typeMessage("Your enquiry has been saved successfully!");
                     disableChatInput();
