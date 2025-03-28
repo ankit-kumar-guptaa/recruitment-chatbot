@@ -154,7 +154,7 @@ function initChatbot() {
             } else if (filledFields === 6) {
                 typeMessage("Got it! Any specific skills, qualifications, or experience you require for this role?");
             } else if (filledFields === 7) {
-                typeMessage("Please provide your email address (e.g., ankit2@email.com).");
+                typeMessage("Please provide your email address.");
             } else if (filledFields === 8) {
                 typeMessage("Please provide your phone number.");
             } else if (filledFields === 9) {
@@ -186,7 +186,7 @@ function initChatbot() {
             } else if (filledFields === 7) {
                 typeMessage("Perfect! Are you open to relocating, or do you prefer a specific location like a city or region?");
             } else if (filledFields === 8) {
-                typeMessage("Please provide your email address (e.g., ankit2@email.com).");
+                typeMessage("Please provide your email address.");
             } else if (filledFields === 9) {
                 typeMessage("Please provide your phone number.");
             } else if (filledFields === 10) {
