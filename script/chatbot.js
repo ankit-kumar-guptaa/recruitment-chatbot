@@ -36,7 +36,7 @@ function initChatbot() {
     // Add CSS dynamically
     const cssLink = document.createElement('link');
     cssLink.rel = 'stylesheet';
-    cssLink.href = 'https://recruitment-chatbot.greencarcarpool.com//script/chatbot.css'; // Localhost URL
+    cssLink.href = 'https://recruitment-chatbot.greencarcarpool.com/script/chatbot.css'; // Localhost URL
     document.head.appendChild(cssLink);
 
     // Add click event to toggle chatbot
@@ -104,7 +104,7 @@ function initChatbot() {
         }
         $('#loading').addClass('show');
         $.ajax({
-            url: 'https://recruitment-chatbot.greencarcarpool.com//process_chat.php', // Localhost URL
+            url: 'https://recruitment-chatbot.greencarcarpool.com/process_chat.php', // Localhost URL
             type: 'POST',
             data: { saveUserInput: true, userType: userType, column: column, value: value, userId: userId, currentStep: currentStep },
             dataType: 'json',
