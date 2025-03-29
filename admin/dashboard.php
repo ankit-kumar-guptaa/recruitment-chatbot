@@ -11,15 +11,39 @@ if (!isset($_SESSION['admin_id'])) {
 // Determine active tab from URL
 $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'dashboard';
 
+// Get filter values
+$filter_position = isset($_GET['position']) ? $_GET['position'] : '';
+$filter_date = isset($_GET['date']) ? $_GET['date'] : '';
+
 // Get all enquiries and analytics data
 try {
-    // Employer enquiries
-    $employerStmt = $conn->prepare("SELECT * FROM employer_enquiries ORDER BY created_at DESC");
+    // Base queries
+    $employerQuery = "SELECT * FROM employer_enquiries";
+    $jobSeekerQuery = "SELECT * FROM job_seeker_enquiries";
+    
+    // Apply filters if set
+    if ($filter_position) {
+        $employerQuery .= " WHERE position LIKE '%$filter_position%'";
+        $jobSeekerQuery .= " WHERE position LIKE '%$filter_position%'";
+    }
+    if ($filter_date) {
+        $connector = strpos($employerQuery, 'WHERE') === false ? ' WHERE' : ' AND';
+        $employerQuery .= "$connector DATE(created_at) = '$filter_date'";
+        
+        $connector = strpos($jobSeekerQuery, 'WHERE') === false ? ' WHERE' : ' AND';
+        $jobSeekerQuery .= "$connector DATE(created_at) = '$filter_date'";
+    }
+    
+    // Finalize queries
+    $employerQuery .= " ORDER BY created_at DESC";
+    $jobSeekerQuery .= " ORDER BY created_at DESC";
+    
+    // Execute queries
+    $employerStmt = $conn->prepare($employerQuery);
     $employerStmt->execute();
     $employerData = $employerStmt->fetchAll();
 
-    // Job seeker enquiries
-    $jobSeekerStmt = $conn->prepare("SELECT * FROM job_seeker_enquiries ORDER BY created_at DESC");
+    $jobSeekerStmt = $conn->prepare($jobSeekerQuery);
     $jobSeekerStmt->execute();
     $jobSeekerData = $jobSeekerStmt->fetchAll();
 
@@ -40,7 +64,7 @@ try {
         ) AS combined
         GROUP BY DATE_FORMAT(created_at, '%Y-%m')
         ORDER BY month DESC
-        LIMIT 6
+        LIMIT 12
     ");
     $monthlyStmt->execute();
     $monthlyData = $monthlyStmt->fetchAll();
@@ -57,12 +81,28 @@ try {
 
     // Position analytics
     $positionStmt = $conn->prepare("
-        (SELECT position, COUNT(*) as count FROM employer_enquiries GROUP BY position ORDER BY count DESC LIMIT 5)
+        (SELECT position, COUNT(*) as count FROM employer_enquiries GROUP BY position ORDER BY count DESC LIMIT 10)
         UNION ALL
-        (SELECT position, COUNT(*) as count FROM job_seeker_enquiries GROUP BY position ORDER BY count DESC LIMIT 5)
+        (SELECT position, COUNT(*) as count FROM job_seeker_enquiries GROUP BY position ORDER BY count DESC LIMIT 10)
     ");
     $positionStmt->execute();
     $positionData = $positionStmt->fetchAll();
+
+    // Experience distribution
+    $experienceStmt = $conn->prepare("
+        SELECT 
+            CASE 
+                WHEN experience_years = 0 THEN 'Fresher'
+                WHEN experience_years BETWEEN 1 AND 3 THEN '1-3 Years'
+                WHEN experience_years BETWEEN 4 AND 7 THEN '4-7 Years'
+                ELSE '8+ Years'
+            END AS experience_range,
+            COUNT(*) as count
+        FROM job_seeker_enquiries
+        GROUP BY experience_range
+    ");
+    $experienceStmt->execute();
+    $experienceData = $experienceStmt->fetchAll();
 
 } catch (PDOException $e) {
     error_log("Dashboard query error: " . $e->getMessage());
@@ -70,6 +110,7 @@ try {
     $jobSeekerData = [];
     $monthlyData = [];
     $positionData = [];
+    $experienceData = [];
     $totalEnquiries = 0;
     $todayCount = 0;
 }
@@ -85,440 +126,17 @@ try {
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        :root {
-            --primary: #4361ee;
-            --primary-light: #4895ef;
-            --secondary: #3f37c9;
-            --success: #4cc9f0;
-            --danger: #f72585;
-            --warning: #f8961e;
-            --dark: #212529;
-            --light: #f8f9fa;
-            --gray: #6c757d;
-            --white: #ffffff;
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Poppins', sans-serif;
-            background-color: #f5f7fb;
-            color: var(--dark);
-        }
-        
-        .dashboard-container {
-            display: grid;
-            grid-template-columns: 250px 1fr;
-            min-height: 100vh;
-        }
-        
-        /* Sidebar Styles */
-        .sidebar {
-            background: linear-gradient(180deg, var(--primary) 0%, var(--secondary) 100%);
-            color: var(--white);
-            padding: 1.5rem 0;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-        }
-        
-        .logo {
-            display: flex;
-            align-items: center;
-            padding: 0 1.5rem;
-            margin-bottom: 2rem;
-        }
-        
-        .logo i {
-            font-size: 1.8rem;
-            margin-right: 0.8rem;
-        }
-        
-        .logo h1 {
-            font-size: 1.3rem;
-            font-weight: 600;
-        }
-        
-        .nav-menu {
-            list-style: none;
-        }
-        
-        .nav-item {
-            margin-bottom: 0.5rem;
-        }
-        
-        .nav-link {
-            display: flex;
-            align-items: center;
-            padding: 0.8rem 1.5rem;
-            color: rgba(255, 255, 255, 0.9);
-            text-decoration: none;
-            transition: all 0.3s ease;
-            border-left: 3px solid transparent;
-        }
-        
-        .nav-link:hover, .nav-link.active {
-            background-color: rgba(255, 255, 255, 0.1);
-            color: var(--white);
-            border-left: 3px solid var(--white);
-        }
-        
-        .nav-link i {
-            margin-right: 0.8rem;
-            font-size: 1.1rem;
-        }
-        
-        /* Main Content Styles */
-        .main-content {
-            padding: 1.5rem;
-        }
-        
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-        }
-        
-        .search-bar {
-            position: relative;
-            width: 300px;
-        }
-        
-        .search-bar input {
-            width: 100%;
-            padding: 0.8rem 1rem 0.8rem 2.5rem;
-            border: none;
-            border-radius: 30px;
-            background-color: var(--white);
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            font-family: 'Poppins', sans-serif;
-        }
-        
-        .search-bar i {
-            position: absolute;
-            left: 1rem;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--gray);
-        }
-        
-        .user-menu {
-            display: flex;
-            align-items: center;
-        }
-        
-        .user-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background-color: var(--primary);
-            color: var(--white);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            margin-left: 1rem;
-            cursor: pointer;
-        }
-        
-        /* Stats Cards */
-        .stats-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-        
-        .stat-card {
-            background-color: var(--white);
-            border-radius: 10px;
-            padding: 1.5rem;
-            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
-            transition: transform 0.3s ease;
-        }
-        
-        .stat-card:hover {
-            transform: translateY(-5px);
-        }
-        
-        .stat-card.primary {
-            border-top: 4px solid var(--primary);
-        }
-        
-        .stat-card.success {
-            border-top: 4px solid var(--success);
-        }
-        
-        .stat-card.warning {
-            border-top: 4px solid var(--warning);
-        }
-        
-        .stat-card.danger {
-            border-top: 4px solid var(--danger);
-        }
-        
-        .stat-title {
-            font-size: 0.9rem;
-            color: var(--gray);
-            margin-bottom: 0.5rem;
-        }
-        
-        .stat-value {
-            font-size: 1.8rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-        }
-        
-        .stat-change {
-            font-size: 0.8rem;
-            color: var(--gray);
-        }
-        
-        .stat-change.positive {
-            color: #28a745;
-        }
-        
-        .stat-change.negative {
-            color: #dc3545;
-        }
-        
-        /* Data Table */
-        .data-table-container {
-            background-color: var(--white);
-            border-radius: 10px;
-            padding: 1.5rem;
-            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
-        }
-        
-        .table-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-        }
-        
-        .table-title {
-            font-size: 1.2rem;
-            font-weight: 600;
-        }
-        
-        .table-actions button {
-            background-color: var(--primary);
-            color: var(--white);
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 5px;
-            cursor: pointer;
-            font-family: 'Poppins', sans-serif;
-            font-size: 0.9rem;
-            margin-left: 0.5rem;
-            transition: background-color 0.3s ease;
-        }
-        
-        .table-actions button:hover {
-            background-color: var(--secondary);
-        }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        
-        th {
-            text-align: left;
-            padding: 1rem;
-            background-color: #f8f9fa;
-            color: var(--gray);
-            font-weight: 500;
-            border-bottom: 1px solid #dee2e6;
-        }
-        
-        td {
-            padding: 1rem;
-            border-bottom: 1px solid #dee2e6;
-        }
-        
-        tr:last-child td {
-            border-bottom: none;
-        }
-        
-        tr:hover {
-            background-color: #f8f9fa;
-        }
-        
-        .user-cell {
-            display: flex;
-            align-items: center;
-        }
-        
-        .user-avatar-sm {
-            width: 35px;
-            height: 35px;
-            border-radius: 50%;
-            background-color: var(--primary-light);
-            color: var(--white);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            margin-right: 0.8rem;
-        }
-        
-        .user-info h4 {
-            font-size: 0.95rem;
-            font-weight: 500;
-            margin-bottom: 0.2rem;
-        }
-        
-        .user-info p {
-            font-size: 0.8rem;
-            color: var(--gray);
-        }
-        
-        .action-btn {
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 1rem;
-            margin-right: 0.5rem;
-        }
-        
-        .action-btn.view {
-            color: var(--primary);
-        }
-        
-        .action-btn.edit {
-            color: var(--success);
-        }
-        
-        .action-btn.delete {
-            color: var(--danger);
-        }
-        
-        /* Analytics Styles */
-        .chart-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-        
-        .chart-card {
-            background-color: var(--white);
-            border-radius: 10px;
-            padding: 1.5rem;
-            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
-        }
-        
-        .chart-title {
-            font-size: 1.2rem;
-            font-weight: 600;
-            margin-bottom: 1rem;
-        }
-        
-        .chart {
-            height: 300px;
-            width: 100%;
-        }
-        
-        /* Settings Styles */
-        .settings-form {
-            background-color: var(--white);
-            border-radius: 10px;
-            padding: 1.5rem;
-            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
-        }
-        
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-        }
-        
-        .form-group input, .form-group select {
-            width: 100%;
-            padding: 0.8rem 1rem;
-            border: 1px solid #dee2e6;
-            border-radius: 5px;
-            font-family: 'Poppins', sans-serif;
-        }
-        
-        .form-actions {
-            display: flex;
-            justify-content: flex-end;
-        }
-        
-        .btn {
-            padding: 0.8rem 1.5rem;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-family: 'Poppins', sans-serif;
-            font-weight: 500;
-        }
-        
-        .btn-primary {
-            background-color: var(--primary);
-            color: var(--white);
-        }
-        
-        .btn-primary:hover {
-            background-color: var(--secondary);
-        }
-        
-        /* Responsive */
-        @media (max-width: 992px) {
-            .chart-container {
-                grid-template-columns: 1fr;
-            }
-        }
-        
-        @media (max-width: 768px) {
-            .dashboard-container {
-                grid-template-columns: 1fr;
-            }
-            
-            .sidebar {
-                display: none;
-            }
-            
-            .stats-container {
-                grid-template-columns: 1fr 1fr;
-            }
-        }
-        
-        @media (max-width: 576px) {
-            .stats-container {
-                grid-template-columns: 1fr;
-            }
-            
-            .header {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-            
-            .search-bar {
-                width: 100%;
-                margin-bottom: 1rem;
-            }
-        }
-    </style>
+    <!-- Include your CSS -->
+    <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
+
     <div class="dashboard-container">
         <!-- Sidebar -->
         <div class="sidebar">
             <div class="logo">
-                <i class="fas fa-briefcase"></i>
-                <h1>RecruitPro</h1>
+                <!-- <i class="fas fa-briefcase"></i> -->
+                <img src="https://elitecorporatesolutions.com/images/logo/logo.png" alt="">
             </div>
             
             <ul class="nav-menu">
@@ -569,12 +187,20 @@ try {
                     <input type="text" placeholder="Search for...">
                 </div>
                 
-                <div class="user-menu">
-                    <span><?php echo $_SESSION['admin_name'] ?? 'Admin'; ?></span>
-                    <div class="user-avatar">
-                        <?php echo substr($_SESSION['admin_name'] ?? 'A', 0, 1); ?>
-                    </div>
-                </div>
+                <div class="header-actions">
+        <!-- Dark Mode Toggle -->
+        <button id="darkModeToggle" class="dark-mode-toggle" title="Toggle Dark Mode">
+            <i class="fas fa-moon"></i>
+            <i class="fas fa-sun" style="display: none;"></i>
+        </button>
+        
+        <div class="user-menu">
+            <span><?php echo $_SESSION['admin_name'] ?? 'Admin'; ?></span>
+            <div class="user-avatar">
+                <?php echo substr($_SESSION['admin_name'] ?? 'A', 0, 1); ?>
+            </div>
+        </div>
+    </div>
             </div>
             
             <?php if ($active_tab == 'dashboard' || $active_tab == 'employer' || $active_tab == 'jobseeker'): ?>
@@ -813,117 +439,87 @@ try {
             <?php endif; ?>
         </div>
     </div>
-
-    <!-- Chart.js -->
+    
+    <!-- JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="assets/js/script.js"></script>
     <script>
-        // Navigation functionality
-        document.addEventListener('DOMContentLoaded', function() {
-            // Initialize charts if on analytics tab
-            if (document.getElementById('enquiriesChart')) {
-                initCharts();
-            }
-            
-            // Search functionality
-            const searchInput = document.querySelector('.search-bar input');
-            if (searchInput) {
-                searchInput.addEventListener('input', function() {
-                    const searchTerm = this.value.toLowerCase();
-                    const activeTable = document.querySelector('.data-table-container:not([style*="display: none"]) table');
-                    
-                    if (activeTable) {
-                        const rows = activeTable.querySelectorAll('tbody tr');
-                        
-                        rows.forEach(row => {
-                            const text = row.textContent.toLowerCase();
-                            if (text.includes(searchTerm)) {
-                                row.style.display = '';
-                            } else {
-                                row.style.display = 'none';
-                            }
-                        });
-                    }
-                });
-            }
-        });
-        
-        // Initialize charts
+        // Initialize charts with all datasets
         function initCharts() {
-            // Enquiries Chart
+            // Enquiries Trend Chart
             const enquiriesCtx = document.getElementById('enquiriesChart').getContext('2d');
-            const enquiriesChart = new Chart(enquiriesCtx, {
+            new Chart(enquiriesCtx, {
                 type: 'line',
                 data: {
-                    labels: [
-                        <?php 
-                        $monthlyData = array_reverse($monthlyData);
-                        foreach ($monthlyData as $row) {
-                            echo "'" . date('M Y', strtotime($row['month'] . '-01')) . "',";
+                    labels: <?php echo json_encode(array_map(function($row) {
+                        return date('M Y', strtotime($row['month'] . '-01'));
+                    }, array_reverse($monthlyData))); ?>,
+                    datasets: [
+                        {
+                            label: 'Total Enquiries',
+                            data: <?php echo json_encode(array_map(function($row) {
+                                return $row['total'];
+                            }, array_reverse($monthlyData))); ?>,
+                            borderColor: '#4361ee',
+                            backgroundColor: 'rgba(67, 97, 238, 0.1)',
+                            fill: true,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Employers',
+                            data: <?php echo json_encode(array_map(function($row) {
+                                return $row['employers'];
+                            }, array_reverse($monthlyData))); ?>,
+                            borderColor: '#4cc9f0',
+                            backgroundColor: 'rgba(76, 201, 240, 0.1)',
+                            fill: true,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Job Seekers',
+                            data: <?php echo json_encode(array_map(function($row) {
+                                return $row['job_seekers'];
+                            }, array_reverse($monthlyData))); ?>,
+                            borderColor: '#f8961e',
+                            backgroundColor: 'rgba(248, 150, 30, 0.1)',
+                            fill: true,
+                            tension: 0.3
                         }
-                        ?>
-                    ],
-                    datasets: [{
-                        label: 'Total Enquiries',
-                        data: [
-                            <?php foreach ($monthlyData as $row) {
-                                echo $row['total'] . ",";
-                            } ?>
-                        ],
-                        borderColor: 'rgba(67, 97, 238, 1)',
-                        backgroundColor: 'rgba(67, 97, 238, 0.1)',
-                        tension: 0.3,
-                        fill: true
-                    }, {
-                        label: 'Employer Enquiries',
-                        data: [
-                            <?php foreach ($monthlyData as $row) {
-                                echo $row['employers'] . ",";
-                            } ?>
-                        ],
-                        borderColor: 'rgba(76, 201, 240, 1)',
-                        backgroundColor: 'rgba(76, 201, 240, 0.1)',
-                        tension: 0.3,
-                        fill: true
-                    }, {
-                        label: 'Job Seeker Enquiries',
-                        data: [
-                            <?php foreach ($monthlyData as $row) {
-                                echo $row['job_seekers'] . ",";
-                            } ?>
-                        ],
-                        borderColor: 'rgba(248, 150, 30, 1)',
-                        backgroundColor: 'rgba(248, 150, 30, 0.1)',
-                        tension: 0.3,
-                        fill: true
-                    }]
+                    ]
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false,
                     plugins: {
-                        legend: {
-                            position: 'top',
+                        title: {
+                            display: true,
+                            text: 'Enquiries Trend (Last 12 Months)'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Enquiries'
+                            }
                         }
                     }
                 }
             });
-            
-            // Positions Chart
+
+            // Positions Distribution Chart
             const positionsCtx = document.getElementById('positionsChart').getContext('2d');
-            const positionsChart = new Chart(positionsCtx, {
-                type: 'doughnut',
+            new Chart(positionsCtx, {
+                type: 'bar',
                 data: {
-                    labels: [
-                        <?php foreach ($positionData as $row) {
-                            echo "'" . addslashes($row['position']) . "',";
-                        } ?>
-                    ],
+                    labels: <?php echo json_encode(array_column($positionData, 'position')); ?>,
                     datasets: [{
-                        data: [
-                            <?php foreach ($positionData as $row) {
-                                echo $row['count'] . ",";
-                            } ?>
-                        ],
+                        label: 'Number of Enquiries',
+                        data: <?php echo json_encode(array_column($positionData, 'count')); ?>,
                         backgroundColor: [
                             '#4361ee', '#4895ef', '#3f37c9', '#4cc9f0', '#f8961e',
                             '#f72585', '#b5179e', '#560bad', '#7209b7', '#480ca8'
@@ -933,49 +529,59 @@ try {
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false,
                     plugins: {
+                        title: {
+                            display: true,
+                            text: 'Top 10 Positions by Enquiries'
+                        },
                         legend: {
-                            position: 'right',
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Enquiries'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Experience Distribution Chart
+            const experienceCtx = document.getElementById('experienceChart').getContext('2d');
+            new Chart(experienceCtx, {
+                type: 'pie',
+                data: {
+                    labels: <?php echo json_encode(array_column($experienceData, 'experience_range')); ?>,
+                    datasets: [{
+                        data: <?php echo json_encode(array_column($experienceData, 'count')); ?>,
+                        backgroundColor: [
+                            '#4361ee', '#4895ef', '#4cc9f0', '#f8961e'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Job Seekers Experience Distribution'
                         }
                     }
                 }
             });
         }
-        
-        // View details
-        function viewDetails(type, id) {
-            alert('View details for ' + type + ' ID: ' + id);
-            // In a real implementation, you would make an AJAX call to fetch details
-            // and display them in a modal
-        }
-        
-        // Edit entry
-        function editEntry(type, id) {
-            alert('Edit ' + type + ' ID: ' + id);
-            // In a real implementation, you would make an AJAX call to fetch the data
-            // and display an edit form in a modal
-        }
-        
-        // Delete entry
-        function deleteEntry(type, id) {
-            if (confirm('Are you sure you want to delete this ' + type + ' enquiry?')) {
-                alert('Delete ' + type + ' ID: ' + id);
-                // In a real implementation, you would make an AJAX call to delete the record
-                // and refresh the table
+
+        // Initialize when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            if (document.getElementById('enquiriesChart')) {
+                initCharts();
             }
-        }
-        
-        // Export to CSV
-        function exportToCSV(type) {
-            window.location.href = 'export_csv.php?type=' + type;
-        }
-        
-        // Save settings
-        function saveSettings() {
-            alert('Settings saved');
-            // In a real implementation, you would make an AJAX call to save the settings
-        }
+        });
     </script>
 </body>
 </html>
