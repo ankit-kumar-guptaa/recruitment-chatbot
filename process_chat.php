@@ -5,10 +5,15 @@ ob_start();
 // Include database connection
 include 'includes/db_connect.php';
 
+// Include PHPMailer classes
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+require 'vendor/autoload.php'; // Ensure PHPMailer is installed via Composer
+
 session_start();
 
 // Add CORS headers (optional, if used by other domains)
-header('Access-Control-Allow-Origin: *'); // Ya specific domain daal do
+header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 header('Content-Type: application/json');
@@ -53,12 +58,10 @@ try {
 
         // Prepare the update/insert query
         if ($exists) {
-            // Update existing row with timestamp update
             $updateQuery = "UPDATE $table SET $column = ?, created_at = NOW() WHERE user_id = ?";
             $stmt = $conn->prepare($updateQuery);
             $stmt->execute([$value, $userId]);
         } else {
-            // Insert new row with only the new column, user_id, and created_at
             if ($column === 'user_type') {
                 $insertQuery = "INSERT INTO $table (user_id, user_type, created_at) VALUES (?, ?, NOW())";
                 $stmt = $conn->prepare($insertQuery);
@@ -75,6 +78,8 @@ try {
 
         // Determine the next step based on the column being saved
         $nextStep = $currentStep + 1;
+        $isFinalStep = false;
+
         if ($userType === 'employer') {
             if ($column === 'user_type') $nextStep = 1;
             elseif ($column === 'name') $nextStep = 2;
@@ -84,7 +89,10 @@ try {
             elseif ($column === 'hiring_count') $nextStep = 6;
             elseif ($column === 'requirements') $nextStep = 7;
             elseif ($column === 'email') $nextStep = 8;
-            elseif ($column === 'phone') $nextStep = 9;
+            elseif ($column === 'phone') {
+                $nextStep = 9;
+                $isFinalStep = true; // Mark as final step for employer
+            }
         } elseif ($userType === 'job seeker') {
             if ($column === 'user_type') $nextStep = 1;
             elseif ($column === 'name') $nextStep = 2;
@@ -96,7 +104,51 @@ try {
             elseif ($column === 'location_preference') $nextStep = 8;
             elseif ($column === 'email') $nextStep = 9;
             elseif ($column === 'phone') $nextStep = 10;
-            elseif ($column === 'comments') $nextStep = 11;
+            elseif ($column === 'comments') {
+                $nextStep = 11;
+                $isFinalStep = true; // Mark as final step for job seeker
+            }
+        }
+
+        // If it's the final step, fetch all data and send email
+        if ($isFinalStep) {
+            $selectQuery = "SELECT * FROM $table WHERE user_id = ?";
+            $stmt = $conn->prepare($selectQuery);
+            $stmt->execute([$userId]);
+            $userData = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            // Initialize PHPMailer
+            $mail = new PHPMailer(true);
+            $mail->isSMTP();
+            $mail->Host       = 'smtp.hostinger.com';
+            $mail->SMTPAuth   = true;
+            $mail->Username   = 'rajiv@greencarcarpool.com';
+            $mail->Password   = 'Rajiv@111@';
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+            $mail->Port       = 587;
+
+            // Email settings
+            $mail->setFrom('rajiv@greencarcarpool.com', 'Enquiry System');
+            $mail->addAddress('theankitkumarg@gmail.com'); // Replace with admin email
+            $mail->isHTML(true);
+            $mail->Subject = "New $userType Enquiry Submitted - User ID: $userId";
+
+            // Build email body
+            $emailBody = "<h2>New $userType Enquiry</h2><p>User ID: $userId</p><ul>";
+            foreach ($userData as $key => $val) {
+                if ($key !== 'user_id' && $key !== 'created_at') {
+                    $emailBody .= "<li><strong>" . ucfirst(str_replace('_', ' ', $key)) . ":</strong> $val</li>";
+                }
+            }
+            $emailBody .= "</ul>";
+            $mail->Body = $emailBody;
+
+            // Send email
+            if (!$mail->send()) {
+                error_log("Email sending failed: " . $mail->ErrorInfo);
+            } else {
+                error_log("Email sent successfully to admin for user_id: $userId");
+            }
         }
 
         echo json_encode(['success' => true, 'message' => 'User input saved successfully', 'nextStep' => $nextStep]);
