@@ -35,7 +35,7 @@ try {
 
         // Server-side validation
         if ($column === 'email' && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
-            throw new Exception("Invalid email format. Please use a valid email address (e.g., ankit2@email.com).");
+            throw new Exception("Invalid email format. Please use a valid email address.");
         }
         if ($column === 'phone' && !preg_match("/^[0-9]{10,15}$/", $value)) {
             throw new Exception("Invalid phone number. Please use 10-15 digits (e.g., 9871916980).");
